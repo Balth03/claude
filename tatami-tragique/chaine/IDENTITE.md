@@ -17,7 +17,7 @@
 📅 Un nouveau Short chaque jour à 18h.
 👇 Commente ton champion AVANT la fin du combat.
 
-Abonne-toi… ou le maître viendra vérifier les tiens 🗿
+Abonne-toi… sinon c'est toi qui montes sur le tatami 🥋
 ```
 
 ## Mots-clés de la chaîne (Paramètres > Chaîne)
