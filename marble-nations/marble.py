@@ -17,9 +17,11 @@ W, H = 1080, 1920
 CW = 780                      # course width (world units = pixels)
 CX0 = 160                     # course left edge on screen
 VIEW_Y0 = 232                 # top of the course viewport on screen
+Z = 1.36                      # course zoom: bigger marbles on a phone screen
+VH = int((1920 - VIEW_Y0) / Z) + 2   # visible course height in world units
 MR = 22                       # marble radius
-GATE_T = 1.3                  # gate opens (s)
-LAVA_T0 = 3.0                 # lava starts rising (s)
+GATE_T = 0.35                 # gate opens (s) - the race must already move in the first second
+LAVA_T0 = 0.0                 # lava starts rising (s)
 CATCH_T = 28.0                # the lava closes the gap on the last marble around this time (s)
 ANTON = D + '/assets/anton.ttf'
 LUCK = D + '/assets/luckiest-guy.ttf'
@@ -249,7 +251,7 @@ class Race:
         s.hits = []
         s.sp.on_collision(1, None, post_solve=s.on_hit)
         s.gate_open = False
-        s.lava_y, s.lava_v = -160.0, 0.0
+        s.lava_y, s.lava_v = 30.0, 0.0
         s.caught = None
 
     @staticmethod
@@ -562,15 +564,15 @@ class Renderer:
         fin = len(s.race.finish_order)
         left = [m for m in rank if m['fin'] is None]
         if not s.race.gate_open:
-            return 60
+            return -60
         if s.chase is None:
             ys = sorted((m['body'].position.y for m in rank[:5]), reverse=True)
-            return 0.6 * ys[0] + 0.4 * ys[2] - 560
+            return 0.6 * ys[0] + 0.4 * ys[2] - 420
         if not left:
             return s.cam
         # the chase: the last marble low in the frame, the lava visible above it
         ys = sorted(m['body'].position.y for m in left[-4:])
-        return 0.7 * ys[0] + 0.3 * ys[-1] - 1050
+        return 0.7 * ys[0] + 0.3 * ys[-1] - 780
 
     # ------------------------------------------------------------ events
     def toast(s, t, pieces, col=WHITE, dur=1.6):
@@ -623,33 +625,45 @@ class Renderer:
 
     # ------------------------------------------------------------ drawing
     def draw_board(s, cv, rank, t):
-        d = ImageDraw.Draw(cv)
-        x0, y0, rh = 6, VIEW_Y0 + 14, 30
-        d.rounded_rectangle([x0 - 2, y0 - 8, 152, y0 + rh * s.n + 6], radius=12, fill=(8, 10, 26))
-        f = font(ANTON, 22)
-        for i, m in enumerate(rank):
-            y = y0 + i * rh
-            last = i == s.n - 1
-            if last and s.race.gate_open:
+        ov = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(ov)
+        x0, y0, rh, w = 14, VIEW_Y0 + 14, 44, 200
+        n = s.n
+        rows = [(i, rank[i]) for i in range(3)] + [None] + [(i, rank[i]) for i in range(n - 3, n)]
+        d.rounded_rectangle([x0 - 6, y0 - 8, x0 + w + 6, y0 + rh * len(rows) + 4], radius=14, fill=(8, 10, 26, 200))
+        f = font(ANTON, 30)
+        for j, row in enumerate(rows):
+            y = y0 + j * rh
+            if row is None:
+                d.text((x0 + w / 2, y + rh / 2 - 4), '• • •', font=f, fill=GREY, anchor='mm')
+                continue
+            i, m = row
+            if i == n - 1 and s.race.gate_open:
                 blink = 0.5 + 0.5 * math.sin(t * 8)
-                d.rounded_rectangle([x0, y - 1, 150, y + rh - 3], radius=6, fill=(int(120 + 100 * blink), 20, 30))
+                d.rounded_rectangle([x0, y, x0 + w, y + rh - 4], radius=8, fill=(int(120 + 100 * blink), 20, 30, 255))
             elif m['fin'] is not None:
-                d.rounded_rectangle([x0, y - 1, 150, y + rh - 3], radius=6, fill=(20, 60, 40))
-            elif i < 3:
-                d.rounded_rectangle([x0, y - 1, 150, y + rh - 3], radius=6, fill=(60, 52, 14))
-            d.text((x0 + 22, y + rh / 2 - 2), str(i + 1), font=f, fill=(200, 205, 230), anchor='mm')
-            fl = flag_disc(m['iso'], 24)
-            cv.paste(fl, (x0 + 38, int(y + 1)), fl)
-            d.text((x0 + 68, y + rh / 2 - 2), ISO3[m['iso']], font=f, fill=WHITE, anchor='lm')
+                d.rounded_rectangle([x0, y, x0 + w, y + rh - 4], radius=8, fill=(20, 70, 44, 255))
+            elif i >= n - 3:
+                d.rounded_rectangle([x0, y, x0 + w, y + rh - 4], radius=8, fill=(80, 30, 20, 255))
+            else:
+                d.rounded_rectangle([x0, y, x0 + w, y + rh - 4], radius=8, fill=(70, 60, 14, 255))
+            d.text((x0 + 26, y + rh / 2 - 3), str(i + 1), font=f, fill=WHITE, anchor='mm')
+            fl = flag_disc(m['iso'], 34)
+            ov.paste(fl, (x0 + 50, int(y + 3)), fl)
+            d.text((x0 + 94, y + rh / 2 - 3), ISO3[m['iso']], font=f, fill=WHITE, anchor='lm')
+            if i == n - 1:
+                e = rich((E('1f525'),), ANTON, 30)
+                ov.paste(e, (x0 + w - 42, int(y + 2)), e)
+        cv.paste(ov, (0, 0), ov)
 
     def draw_marbles(s, cv, cam, t, rank):
-        top = VIEW_Y0
+        top = s.oy
         rk = {id(m): i for i, m in enumerate(rank)}
         tags = []
         for m in s.race.m:
             b = m['body']
-            x, y = b.position.x + CX0, b.position.y - cam + top
-            if y < top - 40 or y > H + 40:
+            x, y = b.position.x + s.ox, b.position.y - cam + top
+            if y < top - 40 or y > VH + 40:
                 continue
             size = MR * 2 + 2
             im = flag_disc(m['iso'], size).rotate(-math.degrees(b.angle), Image.BILINEAR)
@@ -667,22 +681,18 @@ class Renderer:
 
     def render(s, t, cam):
         cv = Image.new('RGB', (W, H), BG2)
-        # course
+        # the course is drawn at world scale on a stage, then zoomed onto the screen
+        s.ox, s.oy = 0, 0
         y0 = int(cam)
-        crop = s.bg.crop((0, y0, CW, y0 + H - VIEW_Y0))
-        cv.paste(crop, (CX0, VIEW_Y0))
-        d = ImageDraw.Draw(cv)
-        # side panels
-        d.rectangle([0, VIEW_Y0, CX0 - 8, H], fill=(12, 14, 34))
-        d.rectangle([CX0 + CW + 8, VIEW_Y0, W, H], fill=(12, 14, 34))
-        # gate
+        st = Image.new('RGB', (CW, VH), BG1)
+        st.paste(s.bg.crop((0, max(0, y0), CW, y0 + VH)), (0, max(0, -y0)))
+        d = ImageDraw.Draw(st)
         if not s.race.gate_open:
-            gy = 300 - cam + VIEW_Y0
-            d.line([(CX0, gy), (CX0 + CW, gy)], fill=RED, width=12)
-        # spinners
+            gy = 300 - cam
+            d.line([(0, gy), (CW, gy)], fill=RED, width=12)
         for b, L, arms in s.race.course.spinners:
-            x, y = b.position.x + CX0, b.position.y - cam + VIEW_Y0
-            if -200 < y < H + 200:
+            x, y = b.position.x, b.position.y - cam
+            if -350 < y < VH + 350:
                 for k in range(arms):
                     a = b.angle + math.pi * k / arms
                     dx, dy = math.cos(a) * L / 2, math.sin(a) * L / 2
@@ -690,25 +700,22 @@ class Renderer:
                     d.line([(x - dx, y - dy), (x + dx, y + dy)], fill=(190, 140, 255), width=14)
                 d.ellipse([x - 16, y - 16, x + 16, y + 16], fill=(250, 240, 255), outline=(90, 60, 160), width=4)
         rank = s.race.ranking()
-        s.draw_marbles(cv, cam, t, rank)
-        s.draw_lava(cv, cam, t)
-        # keep the side panels clean of lava
-        d.rectangle([0, VIEW_Y0, CX0 - 8, H], fill=(12, 14, 34))
-        d.rectangle([CX0 + CW + 8, VIEW_Y0, W, H], fill=(12, 14, 34))
+        s.draw_marbles(st, cam, t, rank)
+        s.draw_lava(st, cam, t)
+        sw = int(CW * Z)
+        cv.paste(st.resize((sw, int(VH * Z)), Image.BILINEAR), ((W - sw) // 2, VIEW_Y0))
         cv.paste(s.header, (0, 0))
         s.draw_board(cv, rank, t)
         s.draw_minimap(cv, t)
-        clock = rich((T(f'{max(0, t - GATE_T):04.1f}s', WHITE),), ANTON, 40, stroke=3)
-        cv.paste(clock, (W - clock.width - 8, VIEW_Y0 + 10), clock)
         return cv, rank
 
     def draw_lava(s, cv, cam, t):
-        ly = s.race.lava_y - cam + VIEW_Y0
-        if ly < VIEW_Y0 - 40:
+        ly = s.race.lava_y - cam
+        if ly < -40:
             return
-        ov = Image.new('RGBA', (CW, int(min(H, ly + 60) - VIEW_Y0) + 1), (0, 0, 0, 0))
+        ov = Image.new('RGBA', (CW, int(min(VH, ly + 60)) + 1), (0, 0, 0, 0))
         d = ImageDraw.Draw(ov)
-        base = ly - VIEW_Y0
+        base = ly
         xs = np.arange(0, CW + 12, 12)
         surf = base + 9 * np.sin(xs * 0.028 + t * 4.0) + 5 * np.sin(xs * 0.071 - t * 6.3)
         # glow just below the surface
@@ -724,12 +731,12 @@ class Renderer:
             y = base - rng.uniform(10, 90)
             r = rng.uniform(4, 11)
             d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 170, 40, 220))
-        cv.paste(ov, (CX0, VIEW_Y0), ov)
+        cv.paste(ov, (0, 0), ov)
         c = s.race.caught
         if c is not None:
             k = t - s.race.catch_t
             b = c['body']
-            x, y = b.position.x + CX0, b.position.y - cam + VIEW_Y0 + 40 * clamp01(k / 0.8)
+            x, y = b.position.x, b.position.y - cam + 40 * clamp01(k / 0.8)
             size = int((MR * 2 + 2) * (1 + 0.5 * math.exp(-k * 3)))
             im = flag_disc(c['iso'], size)
             red = Image.new('RGBA', im.size, (255, 60, 10, 0))
@@ -739,34 +746,36 @@ class Renderer:
             place(cv, rich((E('1f525'),), ANTON, 70), x, y - 40 - 10 * math.sin(k * 9), pop(k, 0.15, 0.2))
 
     def draw_minimap(s, cv, t):
-        x0, x1 = CX0 + CW + 30, W - 30
-        y0, y1 = VIEW_Y0 + 150, H - 380
-        d = ImageDraw.Draw(cv)
-        d.rounded_rectangle([x0, y0 - 6, x1, y1 + 6], radius=14, fill=(26, 30, 64))
+        ov = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(ov)
+        x0, x1 = W - 58, W - 14
+        y0, y1 = VIEW_Y0 + 90, H - 420
+        d.rounded_rectangle([x0, y0 - 6, x1, y1 + 6], radius=14, fill=(8, 10, 26, 190))
         sc = (y1 - y0) / s.race.course.finish_y
         ly = y0 + max(0, s.race.lava_y) * sc
-        if s.race.lava_y > 0:
-            d.rounded_rectangle([x0, y0 - 6, x1, ly], radius=14, fill=(210, 50, 15))
-            d.line([(x0, ly), (x1, ly)], fill=(255, 200, 60), width=5)
+        d.rounded_rectangle([x0, y0 - 6, x1, max(ly, y0 + 8)], radius=14, fill=(210, 50, 15, 255))
+        d.line([(x0, ly), (x1, ly)], fill=(255, 200, 60, 255), width=5)
         d.line([(x0, y1 + 1), (x1, y1 + 1)], fill=WHITE, width=4)
         cx = (x0 + x1) / 2
         for i, m in enumerate(s.race.m):
             y = y0 + min(max(m['body'].position.y, 0), s.race.course.finish_y) * sc
-            fl = flag_disc(m['iso'], 18)
-            cv.paste(fl, (int(cx - 9 + ((i % 5) - 2) * 8), int(y - 9)), fl)
-        f = rich((E('1f525'),), ANTON, 40)
-        cv.paste(f, (int(cx - f.width / 2), int(y0 - 60)), f)
+            fl = flag_disc(m['iso'], 20)
+            ov.paste(fl, (int(cx - 10 + ((i % 3) - 1) * 7), int(y - 10)), fl)
+        f = rich((E('1f525'),), ANTON, 44)
+        ov.paste(f, (int(cx - f.width / 2), int(y0 - 70)), f)
+        cv.paste(ov, (0, 0), ov)
 
     def overlays(s, cv, t):
         # intro hook
-        if t < 2.6:
-            a = 1 - clamp01((t - 2.25) / 0.35)
-            l1 = rich((T('THE LAVA IS COMING', WHITE),), LUCK, 92, stroke=11, shadow=8)
-            l2 = rich((T('WHO SURVIVES? ', (255, 150, 40)), E('1f525')), LUCK, 118, stroke=13, shadow=9)
-            l3 = rich((T('COMMENT YOURS ', WHITE), E('1f447')), LUCK, 70, stroke=9, shadow=6)
-            place(cv, l1, 540, 760, pop(t, 0.2), -3, a)
-            place(cv, l2, 540, 890, pop(t - 0.12, 0.2), 3, a)
-            place(cv, l3, 540, 1020, pop(t - 0.3, 0.2), -2, a)
+        if t < 2.8:
+            a = 1 - clamp01((t - 2.4) / 0.4)
+            puls = 1 + 0.04 * math.sin(t * 9)
+            l1 = rich((T(f'{s.n} COUNTRIES', WHITE),), LUCK, 118, stroke=13, shadow=9)
+            l2 = rich((T('VS ', WHITE), T('LAVA ', (255, 150, 40)), E('1f525')), LUCK, 170, stroke=15, shadow=10)
+            l3 = rich((T('FIND YOURS ', YEL), E('1f447')), LUCK, 80, stroke=10, shadow=7)
+            place(cv, l1, 540, 1060, puls, -3, a)
+            place(cv, l2, 540, 1220, puls, 3, a)
+            place(cv, l3, 540, 1370, 1, -2, a)
         # toasts
         ty = 1180
         for t0, pieces, col, dur in s.toasts:
@@ -820,7 +829,7 @@ class Renderer:
                     s.race.step(dt)
             rank = s.race.ranking()
             s.events(t, rank)
-            tgt = max(0, min(s.camera_target(rank), s.race.course.height - (H - VIEW_Y0) + 60))
+            tgt = max(-60, min(s.camera_target(rank), s.race.course.height - VH + 60))
             s.cam += (tgt - s.cam) * 0.16
             cv, rank = s.render(t, s.cam)
             s.overlays(cv, t)
@@ -996,7 +1005,7 @@ def build_audio(r, path, intro_line):
     fade[i_end:] = np.linspace(1, 0.25, n - i_end)
     out = mus[:n] * 0.32 * fade
     SFX = dict(whoosh=s_whoosh(), riser=s_riser(), boom=s_boom(), win=s_win(), sting=s_sting(), sizzle=s_sizzle())
-    voice = [(0.15, ('say', intro_line), 1.0)]
+    voice = [(0.15, ('say', intro_line), 1.0), (0.0, 'sizzle', 0.5), (0.3, 'whoosh', 0.5)]
     duck = np.ones(n)
     fx = rumble(r, n) * 0.35
     for t, name, g in voice + r.audio:
@@ -1055,7 +1064,7 @@ if __name__ == '__main__':
                 print(part, i, flush=True)
         p.stdin.close()
         p.wait()
-        intro = f"{r.n} countries. The lava is coming. If it gets you, you're out!"
+        intro = f"{r.n} countries versus lava. Run!"
         build_audio(r, f'{D}/_race_{part}.wav', intro)
         out = f'{D}/race_{part}.mp4'
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmpv, '-i', f'{D}/_race_{part}.wav', '-c:v', 'copy',
