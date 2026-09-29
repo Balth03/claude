@@ -28,6 +28,34 @@ LUCK = D + '/assets/luckiest-guy.ttf'
 EMO = D + '/assets/emoji-datasource-twitter-16.0.0/package/img/twitter/64/'
 YEL, RED, WHITE, BLACK, GREY = (255, 210, 31), (235, 60, 70), (255, 255, 255), (10, 12, 22), (160, 166, 184)
 HANDLE = '@marblenations.tv'
+LANG = os.environ.get('LANG_MN', 'fr')   # 'fr' (current) or 'en' (Part 1)
+
+FR_NAMES = {
+    'USA': 'ÉTATS-UNIS', 'MEXICO': 'MEXIQUE', 'BRAZIL': 'BRÉSIL', 'ARGENTINA': 'ARGENTINE', 'COLOMBIA': 'COLOMBIE',
+    'PERU': 'PÉROU', 'CHILE': 'CHILI', 'UK': 'ROYAUME-UNI', 'IRELAND': 'IRLANDE', 'GERMANY': 'ALLEMAGNE',
+    'ITALY': 'ITALIE', 'SPAIN': 'ESPAGNE', 'NETHERLANDS': 'PAYS-BAS', 'BELGIUM': 'BELGIQUE', 'POLAND': 'POLOGNE',
+    'SWEDEN': 'SUÈDE', 'GREECE': 'GRÈCE', 'ROMANIA': 'ROUMANIE', 'TURKEY': 'TURQUIE', 'MOROCCO': 'MAROC',
+    'ALGERIA': 'ALGÉRIE', 'TUNISIA': 'TUNISIE', 'EGYPT': 'ÉGYPTE', 'SOUTH AFRICA': 'AFRIQUE DU SUD',
+    'SAUDI ARABIA': 'ARABIE SAOUDITE', 'UAE': 'ÉMIRATS', 'INDIA': 'INDE', 'INDONESIA': 'INDONÉSIE',
+    'THAILAND': 'THAÏLANDE', 'JAPAN': 'JAPON', 'SOUTH KOREA': 'CORÉE DU SUD', 'AUSTRALIA': 'AUSTRALIE',
+}
+FR_TEXT = {
+    'START': 'DÉPART', 'WINDMILLS': 'MOULINS', 'THE SPLIT': 'LA FOURCHE', 'THE CRUSHER': 'LE BROYEUR',
+    'PINBALL': 'FLIPPER', 'MEGA WHEEL': 'MÉGA ROUE', 'TWIN WHEELS': 'ROUES JUMELLES', 'SPIN CITY': 'TOURBILLONS',
+    'THE SPLIT 2': 'LA FOURCHE 2', 'DOUBLE CRUSHER': 'DOUBLE BROYEUR', 'BUMPER STORM': 'TEMPÊTE',
+    'PLINKO': 'PLINKO', 'MEGA WHEEL 2': 'MÉGA ROUE 2', 'FINAL SPRINT': 'SPRINT FINAL', 'FINISH': 'ARRIVÉE',
+}
+
+
+def tr(en, fr=None):
+    """Pick the on-screen / spoken text for the current language."""
+    if LANG != 'fr':
+        return en
+    return FR_TEXT.get(en, en) if fr is None else fr
+
+
+def disp(name):
+    return FR_NAMES.get(name, name) if LANG == 'fr' else name
 
 COUNTRIES = [
     ('US', 'USA'), ('CA', 'CANADA'), ('MX', 'MEXICO'), ('BR', 'BRAZIL'), ('AR', 'ARGENTINA'), ('CO', 'COLOMBIA'),
@@ -245,7 +273,7 @@ class Race:
             sh.collision_type = 1
             s.sp.add(b, sh)
             b.velocity_func = s.limit_velocity
-            s.m.append(dict(iso=cs[ci][0], name=cs[ci][1], body=b, fin=None, still=0.0))
+            s.m.append(dict(iso=cs[ci][0], name=cs[ci][1], disp=disp(cs[ci][1]), body=b, fin=None, still=0.0))
         s.t = 0.0
         s.finish_order = []
         s.hits = []
@@ -479,7 +507,7 @@ def draw_course(course):
     for k, (y, txt) in enumerate(labs):
         c = SECTION_COL[k % len(SECTION_COL)]
         t = font(ANTON, 96)
-        d.text((CW / 2, y + 70), txt, font=t, fill=tuple(int(v * 0.35 + BG1[i] * 0.65) for i, v in enumerate(c)),
+        d.text((CW / 2, y + 70), tr(txt), font=t, fill=tuple(int(v * 0.35 + BG1[i] * 0.65) for i, v in enumerate(c)),
                anchor='mm')
 
     def section_color(y):
@@ -514,7 +542,7 @@ def draw_course(course):
         for j in range(2):
             c = WHITE if (i + j) % 2 == 0 else (18, 18, 24)
             d.rectangle([i * sq, fy - sq + j * sq, i * sq + sq, fy + j * sq], fill=c)
-    d.text((CW / 2, fy + 150), 'FINISH', font=font(ANTON, 110), fill=(60, 66, 110), anchor='mm')
+    d.text((CW / 2, fy + 150), tr('FINISH'), font=font(ANTON, 110), fill=(60, 66, 110), anchor='mm')
     # side rails
     for x in (0, CW):
         d.line([(x, 0), (x, Hc)], fill=(90, 100, 170), width=16)
@@ -550,10 +578,10 @@ class Renderer:
         a = np.linspace(0, 1, VIEW_Y0)[:, None, None]
         arr = (np.array((14, 16, 40)) * (1 - a) + np.array((26, 30, 70)) * a).astype(np.uint8)
         im = Image.fromarray(np.repeat(arr, W, axis=1)).convert('RGBA')
-        t = rich((T('WORLD ', WHITE), T('MARBLE RACE ', YEL), E('1f3c1')), ANTON, 84, stroke=4)
+        t = rich((T(tr('WORLD ', 'COURSE '), WHITE), T(tr('MARBLE RACE ', 'DES NATIONS '), YEL), E('1f3c1')), ANTON, 84, stroke=4)
         im.alpha_composite(t, ((W - t.width) // 2, 34))
-        st = rich((T(f'PART {s.part}  •  {s.n} COUNTRIES  •  CAUGHT BY THE LAVA = ', (200, 205, 230)),
-                   T('OUT', RED)), ANTON, 38, stroke=2)
+        st = rich((T(tr(f'PART {s.part}  •  {s.n} COUNTRIES  •  CAUGHT BY THE LAVA = ', f'PARTIE {s.part}  •  {s.n} PAYS  •  TOUCHÉ PAR LA LAVE = '), (200, 205, 230)),
+                   T(tr('OUT', 'ÉLIMINÉ'), RED)), ANTON, 38, stroke=2)
         im.alpha_composite(st, ((W - st.width) // 2, 150))
         d = ImageDraw.Draw(im)
         d.rectangle([0, VIEW_Y0 - 5, W, VIEW_Y0], fill=YEL)
@@ -582,7 +610,7 @@ class Renderer:
         L = rank[0]
         if s.race.gate_open and L['fin'] is None:
             if t > 7 and s.leader is not None and L is not s.leader and t - getattr(s, 'last_lead_toast', -9) > 4:
-                s.toast(t, (T('NEW LEADER: ', YEL), E(flag_cp(L['iso'])), T(' ' + L['name'], WHITE)))
+                s.toast(t, (T(tr('NEW LEADER: ', 'EN TÊTE : '), YEL), E(flag_cp(L['iso'])), T(' ' + L['disp'], WHITE)))
                 s.audio.append((t, 'whoosh', 0.35))
                 s.last_lead_toast = t
             s.leader = L
@@ -590,19 +618,19 @@ class Renderer:
                 if txt not in s.seen_labels and txt != 'START' and L['body'].position.y > y:
                     s.seen_labels.add(txt)
                     if s.chase is None:
-                        s.toast(t, (T(txt + '!', (140, 230, 255)),), dur=1.2)
+                        s.toast(t, (T(tr(txt) + '!', (140, 230, 255)),), dur=1.2)
         fin = s.race.finish_order
         if fin and s.first_fin is None:
             s.first_fin = t
             w = fin[0]
-            s.toast(t, (E('1f3c6'), T(' ' + w['name'] + ' WINS!', YEL)), dur=2.2)
+            s.toast(t, (E('1f3c6'), T(' ' + w['disp'] + tr(' WINS!', ' GAGNE !'), YEL)), dur=2.2)
             s.audio.append((t, 'win', 0.5))
-            s.audio.append((t + 0.1, ('say', f"{w['name'].title()} wins!"), 1.0))
+            s.audio.append((t + 0.1, ('say', tr(f"{w['name'].title()} wins!", f"Victoire pour {w['disp'].title()} !")), 1.0))
         if s.first_fin is not None and s.chase is None and t > s.first_fin + 1.6:
             s.chase = t
-            s.toast(t, (E('1f525'), T(' THE LAVA IS COMING ', (255, 150, 40)), E('1f525')), dur=2.0)
+            s.toast(t, (E('1f525'), T(tr(' THE LAVA IS COMING ', ' LA LAVE ARRIVE '), (255, 150, 40)), E('1f525')), dur=2.0)
             s.audio.append((t, 'whoosh', 0.5))
-            s.audio.append((t + 0.2, ('say', "Now, who gets burned?"), 1.0))
+            s.audio.append((t + 0.2, ('say', tr("Now, who gets burned?", "Maintenant, qui va brûler ?")), 1.0))
         left = [m for m in rank if m['fin'] is None]
         last = s.race.last_alive()
         if last is not None and s.race.caught is None:
@@ -610,7 +638,7 @@ class Renderer:
             s.gaps.append((t, gap))
             if (s.chase is not None and gap < 70 and t - s.last_close > 3.5 and t < s.catch_t - 1.2):
                 s.last_close = t
-                s.toast(t, (T('CLOSE CALL ', (255, 150, 40)), E(flag_cp(last['iso'])), T('!', (255, 150, 40))), dur=1.2)
+                s.toast(t, (T(tr('CLOSE CALL ', 'DE JUSTESSE '), (255, 150, 40)), E(flag_cp(last['iso'])), T('!', (255, 150, 40))), dur=1.2)
                 s.audio.append((t, 'whoosh', 0.45))
         if s.chase is not None and len(left) <= 5 and s.five_left is None:
             s.five_left = t
@@ -620,7 +648,7 @@ class Renderer:
             lo = s.race.caught
             s.audio.append((t, 'sizzle', 0.7))
             s.audio.append((t + 0.05, 'boom', 0.8))
-            s.audio.append((t + 0.6, ('say', f"{lo['name'].title()} is burned. Eliminated!"), 1.0))
+            s.audio.append((t + 0.6, ('say', tr(f"{lo['name'].title()} is burned. Eliminated!", f"{lo['disp'].title()} tombe dans la lave ! Éliminé !")), 1.0))
             s.audio.append((t + 1.6, 'sting', 0.45))
 
     # ------------------------------------------------------------ drawing
@@ -675,7 +703,7 @@ class Renderer:
                 tags.append((x, y, m, i))
         for x, y, m, i in tags:
             col = YEL if i == 0 else (RED if i == s.n - 1 else WHITE)
-            lab = rich((T(('#1 ' if i == 0 else ('LAST ' if i == s.n - 1 else f'#{i + 1} ')) + m['name'], col),),
+            lab = rich((T(('#1 ' if i == 0 else (tr('LAST ', 'DERNIER ') if i == s.n - 1 else f'#{i + 1} ')) + m['disp'], col),),
                        ANTON, 26, stroke=3)
             place(cv, lab, x, y - MR - 20)
 
@@ -770,9 +798,9 @@ class Renderer:
         if t < 2.8:
             a = 1 - clamp01((t - 2.4) / 0.4)
             puls = 1 + 0.04 * math.sin(t * 9)
-            l1 = rich((T(f'{s.n} COUNTRIES', WHITE),), LUCK, 118, stroke=13, shadow=9)
-            l2 = rich((T('VS ', WHITE), T('LAVA ', (255, 150, 40)), E('1f525')), LUCK, 170, stroke=15, shadow=10)
-            l3 = rich((T('FIND YOURS ', YEL), E('1f447')), LUCK, 80, stroke=10, shadow=7)
+            l1 = rich((T(tr(f'{s.n} COUNTRIES', f'{s.n} PAYS'), WHITE),), LUCK, 118, stroke=13, shadow=9)
+            l2 = rich((T('VS ', WHITE), T(tr('LAVA ', 'LAVE '), (255, 150, 40)), E('1f525')), LUCK, 170, stroke=15, shadow=10)
+            l3 = rich((T(tr('FIND YOURS ', 'TROUVE LE TIEN '), YEL), E('1f447')), LUCK, 80, stroke=10, shadow=7)
             place(cv, l1, 540, 1060, puls, -3, a)
             place(cv, l2, 540, 1220, puls, 3, a)
             place(cv, l3, 540, 1370, 1, -2, a)
@@ -787,7 +815,7 @@ class Renderer:
         # five left banner
         if s.five_left is not None and s.end_t is None:
             k = t - s.five_left
-            im = rich((T('WHO GETS BURNED? ', (255, 150, 40)), E('1f525')), LUCK, 70, stroke=9, shadow=6)
+            im = rich((T(tr('WHO GETS BURNED? ', 'QUI VA BRÛLER ? '), (255, 150, 40)), E('1f525')), LUCK, 70, stroke=9, shadow=6)
             place(cv, im, 555, VIEW_Y0 + 90, pop(k, 0.2) * (1 + 0.03 * math.sin(t * 7)), -2, maxw=900)
         # end card
         if s.end_t is not None:
@@ -796,7 +824,7 @@ class Renderer:
             cv.paste(Image.blend(cv, dim, 0.62 * clamp01(k / 0.3)))
             lo = s.race.caught
             if k > 0.15:
-                place(cv, rich((T('ELIMINATED', RED),), ANTON, 170, stroke=10, shadow=10), 540, 560,
+                place(cv, rich((T(tr('ELIMINATED', 'ÉLIMINÉ'), RED),), ANTON, 170, stroke=10, shadow=10), 540, 560,
                       2.4 - 1.4 * ease_out((k - 0.15) / 0.15), -6)
             if k > 0.45:
                 place(cv, flag_disc(lo['iso'], 300), 540, 850, pop(k - 0.45, 0.25, 0.2), 8 * math.sin(k * 3))
@@ -804,15 +832,15 @@ class Renderer:
                 x = rich((E('1f525'),), LUCK, 150)
                 place(cv, x, 660, 760, pop(k - 0.7, 0.2, 0.2))
             if k > 0.8:
-                place(cv, rich((T(lo['name'], WHITE),), LUCK, 110, stroke=12, shadow=8), 540, 1080, pop(k - 0.8), -2)
+                place(cv, rich((T(lo['disp'], WHITE),), LUCK, 110, stroke=12, shadow=8), 540, 1080, pop(k - 0.8), -2)
             if k > 1.3:
-                place(cv, rich((T(f'{s.n - 1} COUNTRIES LEFT', YEL),), ANTON, 76, stroke=5), 540, 1220, pop(k - 1.3))
+                place(cv, rich((T(tr(f'{s.n - 1} COUNTRIES LEFT', f'PLUS QUE {s.n - 1} PAYS'), YEL),), ANTON, 76, stroke=5), 540, 1220, pop(k - 1.3))
             if k > 1.7:
-                place(cv, rich((T('FOLLOW FOR PART ' + str(s.part + 1) + ' ', WHITE), E('1f440')), LUCK, 66, stroke=8,
+                place(cv, rich((T(tr('FOLLOW FOR PART ', 'ABONNE-TOI POUR LA PARTIE ') + str(s.part + 1) + ' ', WHITE), E('1f440')), LUCK, 66, stroke=8,
                                shadow=6), 540, 1340, pop(k - 1.7), -2)
             if k > 2.1:
                 w = s.race.finish_order[0]
-                place(cv, rich((T('WINNER: ', GREY), E(flag_cp(w['iso'])), T(' ' + w['name'], YEL)), ANTON, 50,
+                place(cv, rich((T(tr('WINNER: ', 'VAINQUEUR : '), GREY), E(flag_cp(w['iso'])), T(' ' + w['disp'], YEL)), ANTON, 50,
                                stroke=4), 540, 1450, pop(k - 2.1))
         # handle watermark
         hm = rich((T(HANDLE, (150, 156, 190)),), ANTON, 30, stroke=2)
@@ -980,6 +1008,12 @@ _tts = None
 def say(text):
     global _tts
     import sherpa_onnx
+    if _tts is None and LANG == 'fr':
+        M = D + '/tts/vits-piper-fr_FR-tom-medium/'
+        cfg = sherpa_onnx.OfflineTtsConfig(model=sherpa_onnx.OfflineTtsModelConfig(
+            vits=sherpa_onnx.OfflineTtsVitsModelConfig(model=M + 'fr_FR-tom-medium.onnx', tokens=M + 'tokens.txt',
+                                                       data_dir=M + 'espeak-ng-data'), num_threads=4))
+        _tts = sherpa_onnx.OfflineTts(cfg)
     if _tts is None:
         M = D + '/tts/package/kokoro-int8-en-v0_19/'
         cfg = sherpa_onnx.OfflineTtsConfig(model=sherpa_onnx.OfflineTtsModelConfig(
@@ -987,7 +1021,7 @@ def say(text):
                                                            tokens=M + 'tokens.txt', data_dir=M + 'espeak-ng-data'),
             num_threads=4))
         _tts = sherpa_onnx.OfflineTts(cfg)
-    a = _tts.generate(text, sid=VOICE, speed=1.08)
+    a = _tts.generate(text, sid=0 if LANG == 'fr' else VOICE, speed=1.12 if LANG == 'fr' else 1.08)
     x = np.array(a.samples, dtype=np.float64)
     idx = np.linspace(0, len(x) - 1, int(len(x) * SR / a.sample_rate))
     return norm(np.interp(idx, np.arange(len(x)), x)) * 0.95
@@ -1064,7 +1098,7 @@ if __name__ == '__main__':
                 print(part, i, flush=True)
         p.stdin.close()
         p.wait()
-        intro = f"{r.n} countries versus lava. Run!"
+        intro = tr(f"{r.n} countries versus lava. Run!", f"{r.n} pays contre la lave. Partez !")
         build_audio(r, f'{D}/_race_{part}.wav', intro)
         out = f'{D}/race_{part}.mp4'
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmpv, '-i', f'{D}/_race_{part}.wav', '-c:v', 'copy',

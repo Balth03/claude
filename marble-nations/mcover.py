@@ -38,10 +38,10 @@ def cover(part, eliminated_before, out):
         ld.line([(0, 880 - k), (W, 880 - k)], fill=(190, 30, 10, int(255 * (1 - k / 60) ** 2)))
     im.alpha_composite(lava)
     d = ImageDraw.Draw(im)
-    M.place(im, M.rich((M.T('WORLD ', M.WHITE), M.T('MARBLE RACE', M.YEL)), M.ANTON, 120, stroke=7, shadow=8), 540, 250)
-    M.place(im, M.rich((M.T(f'PART {part}', M.WHITE),), M.LUCK, 230, stroke=16, shadow=12), 540, 470, 1, -3)
-    M.place(im, M.rich((M.T(f'{len(cs)} COUNTRIES LEFT', M.YEL),), M.ANTON, 96, stroke=6, shadow=8), 540, 660)
-    M.place(im, M.rich((M.T('WHO GETS BURNED? ', (255, 150, 40)), M.E('1f525')), M.LUCK, 84, stroke=10, shadow=8),
+    M.place(im, M.rich((M.T(M.tr('WORLD ', 'COURSE '), M.WHITE), M.T(M.tr('MARBLE RACE', 'DES NATIONS'), M.YEL)), M.ANTON, 120, stroke=7, shadow=8), 540, 250)
+    M.place(im, M.rich((M.T(M.tr(f'PART {part}', f'PARTIE {part}'), M.WHITE),), M.LUCK, 230, stroke=16, shadow=12), 540, 470, 1, -3)
+    M.place(im, M.rich((M.T(M.tr(f'{len(cs)} COUNTRIES LEFT', f'ENCORE {len(cs)} PAYS'), M.YEL),), M.ANTON, 96, stroke=6, shadow=8), 540, 660)
+    M.place(im, M.rich((M.T(M.tr('WHO GETS BURNED? ', 'QUI VA BRÛLER ? '), (255, 150, 40)), M.E('1f525')), M.LUCK, 84, stroke=10, shadow=8),
             540, 800, 1, -2)
     im.convert('RGB').save(out)
 
