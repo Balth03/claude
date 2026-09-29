@@ -181,22 +181,29 @@ def build(ev, dur, esc_vt, slow=None, out='ring.wav'):
         f = deg_hz(tones[idx], sh, base=A3 * 2)
         add(lead, pluck(f, 0.32, vel), t, 0.30)
         if c >= 4 and i % 2 == 0: add(lead, pluck(f * 2, 0.22, vel), t, 0.12)
-    # ---- melody: every bounce = next hook note, snapped to the 1/32 grid, chord-aware, rising register
-    k = 0
-    last_snap = -1
+    # ---- melody: bounces play the hook; dense clouds of bounces (many balls) become chords + glitter
+    slots = {}
     for (t, kind, ring, spd) in ev:
         if kind != 'b': continue
-        ts = round(t / GRID) * GRID
-        if ts == last_snap: ts += GRID
-        last_snap = ts
+        ts = round(t / GRID)
+        c_, m_ = slots.get(ts, (0, 0))
+        slots[ts] = (c_ + 1, max(m_, spd))
+    k = 0
+    for ts_i in sorted(slots):
+        ts = ts_i * GRID
+        cnt, spd = slots[ts_i]
         d = prog_at(ts); sh = shift_at(ts)
         tones = [d, d + 2, d + 4, d + 7, d + 9, d + 11]
         idx = HOOK[k % len(HOOK)]
         oct_up = 7 * (1 if sum(1 for e in esc_vt if e <= ts) >= 3 else 0)
+        vel = 0.5 + 0.5 * min(1.0, max(0.0, (spd - 900) / 500))
+        dens = min(1.0, math.log2(1 + cnt) / 3)
+        voices = [idx] + ([(idx + 2) % 6] if cnt >= 3 else []) + ([(idx + 4) % 6] if cnt >= 8 else [])
+        for vi, ix in enumerate(voices):
+            f = deg_hz(tones[ix] + oct_up, sh, base=A3 * 2)
+            add(mel, bell(f, 0.9, vel), ts + 0.006 * vi, 0.5 * (1 - 0.25 * vi) * (0.7 + 0.3 * dens))
         f = deg_hz(tones[idx] + oct_up, sh, base=A3 * 2)
-        vel = 0.55 + 0.45 * min(1.0, max(0.0, (spd - 900) / 500))
-        add(mel, bell(f, 0.9, vel), ts, 0.55)
-        add(mel, pluck(f * 2, 0.35, vel), ts, 0.16)
+        add(mel, pluck(f * 2, 0.35, vel), ts, 0.14)
         k += 1
     # ---- escape events: sparkle arpeggio + pop, final = big drop
     for j, te in enumerate(esc_vt):
@@ -207,6 +214,9 @@ def build(ev, dur, esc_vt, slow=None, out='ring.wav'):
             add(fx, bell(deg_hz(tone, sh, base=A3 * 2), 1.1 if last else 0.7, 0.9), te + i * (0.035 if not last else 0.05), 0.5)
         n = int(0.08 * SR); tt = np.arange(n) / SR
         add(fx, np.sin(2 * np.pi * (1400 - 9000 * tt) * tt) * np.exp(-tt * 40), te, 0.6)   # pop
+        nb_ = int(0.16 * SR); tb_ = np.arange(nb_) / SR                                       # 'x2' bloop, higher every ring
+        f0_ = 260 * 2 ** (j / 4.5)
+        add(fx, np.sin(2 * np.pi * np.cumsum(f0_ * (1 + 1.2 * tb_ / 0.16)) / SR) * np.exp(-tb_ * 14), te, 0.55)
         if j == len(esc_vt) - 2: add(fx, boom(1.0), te, 0.7)   # vine-boom-ish hit: 'oh no, last ring'
         if last:
             add(fx, boom(), te, 1.0)
