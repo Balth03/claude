@@ -17,7 +17,7 @@ def cover(part, eliminated_before, out):
     pts = []
     for c in cs * 2:
         for _ in range(40):
-            x, y = rng.uniform(60, W - 60), rng.uniform(900, H - 60)
+            x, y = rng.uniform(60, W - 60), rng.uniform(1110, H - 60)
             if all((x - px) ** 2 + (y - py) ** 2 > 120 ** 2 for px, py, _ in pts):
                 pts.append((x, y, c))
                 break
@@ -26,11 +26,22 @@ def cover(part, eliminated_before, out):
         g = M.gloss(120)
         im.alpha_composite(f, (int(x - 60), int(y - 60)))
         im.alpha_composite(g, (int(x - 60), int(y - 60)))
+    lava = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(lava)
+    xs = np.arange(0, W + 20, 20)
+    ys = 1010 + 22 * np.sin(xs * 0.02) + 12 * np.sin(xs * 0.057 + 1)
+    ld.polygon([(0, 880)] + [(x, y + 40) for x, y in zip(xs, ys)] + [(W, 880)], fill=(255, 120, 20, 90))
+    ld.polygon([(0, 880)] + list(zip(xs, ys)) + [(W, 880)], fill=(190, 30, 10, 255))
+    ld.line(list(zip(xs, ys)), fill=(255, 190, 40, 255), width=14)
+    ld.line(list(zip(xs, ys - 16)), fill=(255, 110, 20, 255), width=10)
+    for k in range(60):
+        ld.line([(0, 880 - k), (W, 880 - k)], fill=(190, 30, 10, int(255 * (1 - k / 60) ** 2)))
+    im.alpha_composite(lava)
     d = ImageDraw.Draw(im)
     M.place(im, M.rich((M.T('WORLD ', M.WHITE), M.T('MARBLE RACE', M.YEL)), M.ANTON, 120, stroke=7, shadow=8), 540, 250)
     M.place(im, M.rich((M.T(f'PART {part}', M.WHITE),), M.LUCK, 230, stroke=16, shadow=12), 540, 470, 1, -3)
     M.place(im, M.rich((M.T(f'{len(cs)} COUNTRIES LEFT', M.YEL),), M.ANTON, 96, stroke=6, shadow=8), 540, 660)
-    M.place(im, M.rich((M.T('WHO GETS ELIMINATED? ', M.RED), M.E('26a0-fe0f')), M.LUCK, 76, stroke=10, shadow=8),
+    M.place(im, M.rich((M.T('WHO GETS BURNED? ', (255, 150, 40)), M.E('1f525')), M.LUCK, 84, stroke=10, shadow=8),
             540, 800, 1, -2)
     im.convert('RGB').save(out)
 

@@ -19,6 +19,8 @@ CX0 = 160                     # course left edge on screen
 VIEW_Y0 = 232                 # top of the course viewport on screen
 MR = 22                       # marble radius
 GATE_T = 1.3                  # gate opens (s)
+LAVA_T0 = 3.0                 # lava starts rising (s)
+CATCH_T = 28.0                # the lava closes the gap on the last marble around this time (s)
 ANTON = D + '/assets/anton.ttf'
 LUCK = D + '/assets/luckiest-guy.ttf'
 EMO = D + '/assets/emoji-datasource-twitter-16.0.0/package/img/twitter/64/'
@@ -45,6 +47,10 @@ def roster(part):
     st = json.load(open(STATE)) if os.path.exists(STATE) else {}
     out = {st[str(p)] for p in range(1, part) if str(p) in st}
     return [c for c in COUNTRIES if c[1] not in out]
+
+
+def clamp01(t):
+    return max(0.0, min(1.0, t))
 
 
 def flag_cp(iso):
@@ -123,37 +129,85 @@ class Course:
         s.seg((CW, y), (CW / 2 + hole / 2, y + depth), 7, kind='ramp')
         return y + depth + 60
 
+    def split(s, y, h=760, flip=False):
+        """Centre divider: one fast lane (few pegs), one bumper lane."""
+        fx = (lambda x: CW - x) if flip else (lambda x: x)
+        s.seg((CW / 2, y + 40), (CW / 2, y + h), 9, kind='ramp')
+        s.peg(CW / 2, y + 30, 16)
+        for k in range(3):
+            s.peg(fx(95 + (120 if k % 2 else 0)), y + 180 + k * 200, 10)
+        for k in range(4):
+            s.bumper(fx(CW / 2 + 95 + (150 if k % 2 else 0)), y + 150 + k * 165, 30)
+        return y + h + 40
+
     def build(s):
-        y = 0
-        # start box and gate
         s.labels.append((40, 'START'))
         s.gate = s.seg((0, 300), (CW, 300), 6, kind='gate')
         y = 330
-        y = s.pegfield(y, 16)
-        s.labels.append((y - 20, 'ZIG ZAG'))
-        y = s.zigzag(y + 40, 7, drop=160, step=240)
-        s.labels.append((y, 'SPINNERS'))
-        y += 80
-        for k in range(4):
-            x = 200 if k % 2 == 0 else CW - 200
-            s.spinner(x, y + 110, 300, (1.4 if k % 2 == 0 else -1.4), arms=2)
-            s.peg(CW - x, y + 110, 10)
-            y += 260
-        s.labels.append((y, 'THE FUNNEL'))
-        y = s.funnel(y + 40)
-        s.labels.append((y, 'BUMPERS'))
-        y += 60
-        for j in range(6):
+        y = s.pegfield(y + 30, 6, dy=80, dx=125, r=9)
+        s.labels.append((y - 10, 'WINDMILLS'))
+        y += 90
+        for k in range(2):
+            # left wheel turns clockwise, right one anticlockwise: both sweep marbles down the middle
+            s.spinner(215, y + 120, 250, 2.4, arms=2)
+            s.spinner(CW - 215, y + 120, 250, -2.4, arms=2)
+            y += 280
+        s.labels.append((y, 'THE SPLIT'))
+        y = s.split(y + 60)
+        s.labels.append((y, 'THE CRUSHER'))
+        y = s.funnel(y + 40, hole=150, depth=240)
+        s.spinner(CW / 2, y + 70, 230, 3.2, arms=2)
+        y += 230
+        s.labels.append((y, 'PINBALL'))
+        y += 70
+        for j in range(4):
             for i in range(4):
                 x = 110 + i * 190 + (95 if j % 2 else 0)
                 if x < CW - 60:
                     s.bumper(x, y, 28)
-            y += 150
-        s.labels.append((y, 'LAST ZIG ZAG'))
-        y = s.zigzag(y + 40, 5, gap=130, drop=170, step=250)
+            y += 145
+        s.labels.append((y, 'MEGA WHEEL'))
+        y += 380
+        s.spinner(CW / 2, y, 600, 1.3, arms=3)
+        y += 380
+        s.labels.append((y, 'TWIN WHEELS'))
+        y += 250
+        s.spinner(200, y, 330, -1.8, arms=3)
+        s.spinner(CW - 200, y, 330, 1.8, arms=3)
+        y += 250
+        s.labels.append((y, 'SPIN CITY'))
+        y += 60
+        for j in range(2):
+            for i in range(3):
+                x = 140 + i * 250
+                s.spinner(x, y + 110, 150, (2.8 if (i + j) % 2 else -2.8), arms=2)
+            y += 240
+        s.labels.append((y, 'THE SPLIT 2'))
+        y = s.split(y + 60, flip=True)
+        s.labels.append((y, 'DOUBLE CRUSHER'))
+        y = s.funnel(y + 40, hole=150, depth=240)
+        s.spinner(CW / 2, y + 70, 230, -3.2, arms=2)
+        y += 230
+        y = s.funnel(y, hole=150, depth=200)
+        s.spinner(CW / 2, y + 70, 230, 3.2, arms=2)
+        y += 230
+        s.labels.append((y, 'BUMPER STORM'))
+        y += 70
+        for j in range(5):
+            for i in range(4):
+                x = 110 + i * 190 + (95 if j % 2 else 0)
+                if x < CW - 60:
+                    s.bumper(x, y, 26)
+            y += 140
+        s.labels.append((y, 'PLINKO'))
+        y = s.pegfield(y + 40, 8, dy=72, dx=100)
+        s.labels.append((y, 'MEGA WHEEL 2'))
+        y += 380
+        s.spinner(CW / 2, y, 600, -1.4, arms=3)
+        y += 380
         s.labels.append((y, 'FINAL SPRINT'))
-        y = s.pegfield(y + 20, 6, dy=80, dx=120, r=8)
-        y += 260
+        y = s.pegfield(y + 30, 5, dy=85, dx=120, r=8)
+        y += 200
         return y
 
     def walls(s):
@@ -167,7 +221,7 @@ class Race:
     def __init__(s, seed, cs=None):
         s.seed = seed
         s.sp = pymunk.Space()
-        s.sp.gravity = (0, 900)
+        s.sp.gravity = (0, 1250)
         s.sp.damping = 0.985
         s.course = Course(s.sp, seed)
         s.course.walls()
@@ -195,13 +249,15 @@ class Race:
         s.hits = []
         s.sp.on_collision(1, None, post_solve=s.on_hit)
         s.gate_open = False
+        s.lava_y, s.lava_v = -160.0, 0.0
+        s.caught = None
 
     @staticmethod
     def limit_velocity(body, gravity, damping, dt):
         pymunk.Body.update_velocity(body, gravity, damping, dt)
         v = body.velocity.length
-        if v > 1100:
-            body.velocity = body.velocity * (1100 / v)
+        if v > 1350:
+            body.velocity = body.velocity * (1350 / v)
 
     def on_hit(s, arb, space, data):
         imp = arb.total_impulse.length
@@ -214,6 +270,7 @@ class Race:
             s.gate_open = True
         s.sp.step(dt)
         s.t += dt
+        s.lava_step(dt)
         for m in s.m:
             b = m['body']
             if m['fin'] is None and b.position.y > s.course.finish_y:
@@ -230,13 +287,36 @@ class Race:
                 else:
                     m['still'] = 0
 
+    def last_alive(s):
+        run = [m for m in s.m if m['fin'] is None]
+        return min(run, key=lambda m: m['body'].position.y) if run else None
+
+    def lava_step(s, dt):
+        """The lava is rubber-banded to the last marble: the gap it allows shrinks to 0 at CATCH_T."""
+        if s.t < LAVA_T0 or s.caught is not None:
+            return
+        last = s.last_alive()
+        if last is None:
+            return
+        u = clamp01((s.t - LAVA_T0) / (CATCH_T - LAVA_T0))
+        gap = 1000 * (1 - u) ** 1.3 - 60 * u
+        want = min(1.6 * (last["body"].position.y - gap - s.lava_y), 260 + 600 * u ** 4)
+        want = max(want, 25 + 60 * u)
+        s.lava_v += (want - s.lava_v) * min(1, 2.5 * dt)
+        s.lava_y += s.lava_v * dt
+        for m in s.m:
+            if m['fin'] is None and m['body'].position.y < s.lava_y:
+                s.caught = m
+                s.catch_t = s.t
+                break
+
     def ranking(s):
         fin = list(s.finish_order)
         rest = sorted((m for m in s.m if m['fin'] is None), key=lambda m: -m['body'].position.y)
         return fin + rest
 
     def done(s):
-        return len(s.finish_order) == len(s.m)
+        return s.caught is not None or len(s.finish_order) == len(s.m)
 
 
 def headless(seed, tmax=150, cs=None):
@@ -245,10 +325,11 @@ def headless(seed, tmax=150, cs=None):
     while not r.done() and r.t < tmax:
         r.step(dt)
     f = [m['fin'] for m in r.finish_order]
-    if not r.done():
-        return dict(seed=seed, ok=False, n=len(f))
-    return dict(seed=seed, ok=True, first=f[0], last=f[-1], gap=f[-1] - f[-2], winner=r.finish_order[0]['name'],
-                loser=r.finish_order[-1]['name'])
+    if r.caught is None or not f:
+        return dict(seed=seed, ok=False, n=len(f), t=r.t)
+    # how long the eventual victim spent in last place, and how close the second-to-last came
+    return dict(seed=seed, ok=True, first=f[0], catch=r.catch_t, n_fin=len(f), winner=r.finish_order[0]['name'],
+                loser=r.caught['name'])
 
 
 
@@ -455,8 +536,12 @@ class Renderer:
         s.seen_labels = set()
         s.first_fin = None
         s.five_left = None
+        s.chase = None
+        s.last_close = -9
+        s.gaps = []           # (t, gap between lava and the last marble) -> drives the rumble
         s.end_t = None
         s.header = s.make_header()
+        s.catch_t = s.info['catch']
 
     def make_header(s):
         im = Image.new('RGBA', (W, VIEW_Y0), BLACK + (255,))
@@ -465,8 +550,8 @@ class Renderer:
         im = Image.fromarray(np.repeat(arr, W, axis=1)).convert('RGBA')
         t = rich((T('WORLD ', WHITE), T('MARBLE RACE ', YEL), E('1f3c1')), ANTON, 84, stroke=4)
         im.alpha_composite(t, ((W - t.width) // 2, 34))
-        st = rich((T(f'PART {s.part}  •  {s.n} COUNTRIES  •  LAST PLACE ', (200, 205, 230)),
-                   T('ELIMINATED', RED)), ANTON, 38, stroke=2)
+        st = rich((T(f'PART {s.part}  •  {s.n} COUNTRIES  •  CAUGHT BY THE LAVA = ', (200, 205, 230)),
+                   T('OUT', RED)), ANTON, 38, stroke=2)
         im.alpha_composite(st, ((W - st.width) // 2, 150))
         d = ImageDraw.Draw(im)
         d.rectangle([0, VIEW_Y0 - 5, W, VIEW_Y0], fill=YEL)
@@ -478,16 +563,14 @@ class Renderer:
         left = [m for m in rank if m['fin'] is None]
         if not s.race.gate_open:
             return 60
-        if fin == 0:
+        if s.chase is None:
             ys = sorted((m['body'].position.y for m in rank[:5]), reverse=True)
             return 0.6 * ys[0] + 0.4 * ys[2] - 560
         if not left:
             return s.cam
-        if len(left) <= 6:
-            return left[-1]['body'].position.y - 700
-        # after the win: follow the battle at the back (the last 8 unfinished marbles)
-        ys = sorted(m['body'].position.y for m in left[-8:])
-        return ys[len(ys) // 2] - 650
+        # the chase: the last marble low in the frame, the lava visible above it
+        ys = sorted(m['body'].position.y for m in left[-4:])
+        return 0.7 * ys[0] + 0.3 * ys[-1] - 1050
 
     # ------------------------------------------------------------ events
     def toast(s, t, pieces, col=WHITE, dur=1.6):
@@ -504,26 +587,39 @@ class Renderer:
             for y, txt in s.race.course.labels:
                 if txt not in s.seen_labels and txt != 'START' and L['body'].position.y > y:
                     s.seen_labels.add(txt)
-                    s.toast(t, (T(txt + '!', (140, 230, 255)),), dur=1.3)
-                    s.audio.append((t, 'riser', 0.3))
+                    if s.chase is None:
+                        s.toast(t, (T(txt + '!', (140, 230, 255)),), dur=1.2)
         fin = s.race.finish_order
         if fin and s.first_fin is None:
             s.first_fin = t
             w = fin[0]
-            s.toast(t, (E('1f3c6'), T(' ' + w['name'] + ' WINS THE RACE!', YEL)), dur=2.6)
-            s.audio.append((t, 'win', 0.6))
-            s.audio.append((t + 0.1, ('say', f"{w['name'].title()} wins the race!"), 1.0))
+            s.toast(t, (E('1f3c6'), T(' ' + w['name'] + ' WINS!', YEL)), dur=2.2)
+            s.audio.append((t, 'win', 0.5))
+            s.audio.append((t + 0.1, ('say', f"{w['name'].title()} wins!"), 1.0))
+        if s.first_fin is not None and s.chase is None and t > s.first_fin + 1.6:
+            s.chase = t
+            s.toast(t, (E('1f525'), T(' THE LAVA IS COMING ', (255, 150, 40)), E('1f525')), dur=2.0)
+            s.audio.append((t, 'whoosh', 0.5))
+            s.audio.append((t + 0.2, ('say', "Now, who gets burned?"), 1.0))
         left = [m for m in rank if m['fin'] is None]
-        if s.first_fin is not None and len(left) <= 5 and s.five_left is None:
+        last = s.race.last_alive()
+        if last is not None and s.race.caught is None:
+            gap = last['body'].position.y - s.race.lava_y
+            s.gaps.append((t, gap))
+            if (s.chase is not None and gap < 70 and t - s.last_close > 3.5 and t < s.catch_t - 1.2):
+                s.last_close = t
+                s.toast(t, (T('CLOSE CALL ', (255, 150, 40)), E(flag_cp(last['iso'])), T('!', (255, 150, 40))), dur=1.2)
+                s.audio.append((t, 'whoosh', 0.45))
+        if s.chase is not None and len(left) <= 5 and s.five_left is None:
             s.five_left = t
-            s.audio.append((t, 'riser', 0.5))
-            s.audio.append((t + 0.1, ('say', "Five left. Who is going home?"), 1.0))
+            s.audio.append((t, 'riser', 0.35))
         if s.race.done() and s.end_t is None:
             s.end_t = t
-            lo = fin[-1]
-            s.audio.append((t, 'boom', 0.8))
-            s.audio.append((t + 0.5, ('say', f"{lo['name'].title()}. You are eliminated!"), 1.0))
-            s.audio.append((t + 1.2, 'sting', 0.5))
+            lo = s.race.caught
+            s.audio.append((t, 'sizzle', 0.7))
+            s.audio.append((t + 0.05, 'boom', 0.8))
+            s.audio.append((t + 0.6, ('say', f"{lo['name'].title()} is burned. Eliminated!"), 1.0))
+            s.audio.append((t + 1.6, 'sting', 0.45))
 
     # ------------------------------------------------------------ drawing
     def draw_board(s, cv, rank, t):
@@ -595,20 +691,78 @@ class Renderer:
                 d.ellipse([x - 16, y - 16, x + 16, y + 16], fill=(250, 240, 255), outline=(90, 60, 160), width=4)
         rank = s.race.ranking()
         s.draw_marbles(cv, cam, t, rank)
+        s.draw_lava(cv, cam, t)
+        # keep the side panels clean of lava
+        d.rectangle([0, VIEW_Y0, CX0 - 8, H], fill=(12, 14, 34))
+        d.rectangle([CX0 + CW + 8, VIEW_Y0, W, H], fill=(12, 14, 34))
         cv.paste(s.header, (0, 0))
         s.draw_board(cv, rank, t)
-        # right side: race clock + remaining
-        left = sum(1 for m in s.race.m if m['fin'] is None)
+        s.draw_minimap(cv, t)
         clock = rich((T(f'{max(0, t - GATE_T):04.1f}s', WHITE),), ANTON, 40, stroke=3)
         cv.paste(clock, (W - clock.width - 8, VIEW_Y0 + 10), clock)
         return cv, rank
+
+    def draw_lava(s, cv, cam, t):
+        ly = s.race.lava_y - cam + VIEW_Y0
+        if ly < VIEW_Y0 - 40:
+            return
+        ov = Image.new('RGBA', (CW, int(min(H, ly + 60) - VIEW_Y0) + 1), (0, 0, 0, 0))
+        d = ImageDraw.Draw(ov)
+        base = ly - VIEW_Y0
+        xs = np.arange(0, CW + 12, 12)
+        surf = base + 9 * np.sin(xs * 0.028 + t * 4.0) + 5 * np.sin(xs * 0.071 - t * 6.3)
+        # glow just below the surface
+        for k, a in ((34, 40), (20, 70)):
+            d.polygon([(0, -5)] + [(x, y + k) for x, y in zip(xs, surf)] + [(CW, -5)], fill=(255, 120, 20, a))
+        d.polygon([(0, -5)] + list(zip(xs, surf)) + [(CW, -5)], fill=(190, 30, 10, 255))
+        d.polygon([(0, -5)] + [(x, y - 70) for x, y in zip(xs, surf)] + [(CW, -5)], fill=(120, 14, 8, 255))
+        d.line(list(zip(xs, surf)), fill=(255, 190, 40, 255), width=10)
+        d.line(list(zip(xs, surf - 12)), fill=(255, 110, 20, 255), width=8)
+        rng = random.Random(int(t * 10))
+        for _ in range(7):
+            x = rng.uniform(20, CW - 20)
+            y = base - rng.uniform(10, 90)
+            r = rng.uniform(4, 11)
+            d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 170, 40, 220))
+        cv.paste(ov, (CX0, VIEW_Y0), ov)
+        c = s.race.caught
+        if c is not None:
+            k = t - s.race.catch_t
+            b = c['body']
+            x, y = b.position.x + CX0, b.position.y - cam + VIEW_Y0 + 40 * clamp01(k / 0.8)
+            size = int((MR * 2 + 2) * (1 + 0.5 * math.exp(-k * 3)))
+            im = flag_disc(c['iso'], size)
+            red = Image.new('RGBA', im.size, (255, 60, 10, 0))
+            red.putalpha(im.getchannel('A').point(lambda v: int(v * 0.55 * clamp01(k / 0.5))))
+            im.alpha_composite(red)
+            cv.paste(im, (int(x - size / 2), int(y - size / 2)), im)
+            place(cv, rich((E('1f525'),), ANTON, 70), x, y - 40 - 10 * math.sin(k * 9), pop(k, 0.15, 0.2))
+
+    def draw_minimap(s, cv, t):
+        x0, x1 = CX0 + CW + 30, W - 30
+        y0, y1 = VIEW_Y0 + 150, H - 380
+        d = ImageDraw.Draw(cv)
+        d.rounded_rectangle([x0, y0 - 6, x1, y1 + 6], radius=14, fill=(26, 30, 64))
+        sc = (y1 - y0) / s.race.course.finish_y
+        ly = y0 + max(0, s.race.lava_y) * sc
+        if s.race.lava_y > 0:
+            d.rounded_rectangle([x0, y0 - 6, x1, ly], radius=14, fill=(210, 50, 15))
+            d.line([(x0, ly), (x1, ly)], fill=(255, 200, 60), width=5)
+        d.line([(x0, y1 + 1), (x1, y1 + 1)], fill=WHITE, width=4)
+        cx = (x0 + x1) / 2
+        for i, m in enumerate(s.race.m):
+            y = y0 + min(max(m['body'].position.y, 0), s.race.course.finish_y) * sc
+            fl = flag_disc(m['iso'], 18)
+            cv.paste(fl, (int(cx - 9 + ((i % 5) - 2) * 8), int(y - 9)), fl)
+        f = rich((E('1f525'),), ANTON, 40)
+        cv.paste(f, (int(cx - f.width / 2), int(y0 - 60)), f)
 
     def overlays(s, cv, t):
         # intro hook
         if t < 2.6:
             a = 1 - clamp01((t - 2.25) / 0.35)
-            l1 = rich((T('WHICH COUNTRY', WHITE),), LUCK, 108, stroke=12, shadow=8)
-            l2 = rich((T('WINS? ', YEL), E('1f3c1')), LUCK, 130, stroke=13, shadow=9)
+            l1 = rich((T('THE LAVA IS COMING', WHITE),), LUCK, 92, stroke=11, shadow=8)
+            l2 = rich((T('WHO SURVIVES? ', (255, 150, 40)), E('1f525')), LUCK, 118, stroke=13, shadow=9)
             l3 = rich((T('COMMENT YOURS ', WHITE), E('1f447')), LUCK, 70, stroke=9, shadow=6)
             place(cv, l1, 540, 760, pop(t, 0.2), -3, a)
             place(cv, l2, 540, 890, pop(t - 0.12, 0.2), 3, a)
@@ -624,21 +778,21 @@ class Renderer:
         # five left banner
         if s.five_left is not None and s.end_t is None:
             k = t - s.five_left
-            im = rich((T('WHO GETS ELIMINATED? ', RED), E('26a0-fe0f')), LUCK, 70, stroke=9, shadow=6)
+            im = rich((T('WHO GETS BURNED? ', (255, 150, 40)), E('1f525')), LUCK, 70, stroke=9, shadow=6)
             place(cv, im, 555, VIEW_Y0 + 90, pop(k, 0.2) * (1 + 0.03 * math.sin(t * 7)), -2, maxw=900)
         # end card
         if s.end_t is not None:
             k = t - s.end_t
             dim = Image.new('RGB', cv.size, (0, 0, 0))
             cv.paste(Image.blend(cv, dim, 0.62 * clamp01(k / 0.3)))
-            lo = s.race.finish_order[-1]
+            lo = s.race.caught
             if k > 0.15:
                 place(cv, rich((T('ELIMINATED', RED),), ANTON, 170, stroke=10, shadow=10), 540, 560,
                       2.4 - 1.4 * ease_out((k - 0.15) / 0.15), -6)
             if k > 0.45:
                 place(cv, flag_disc(lo['iso'], 300), 540, 850, pop(k - 0.45, 0.25, 0.2), 8 * math.sin(k * 3))
                 place(cv, gloss(300), 540, 850, pop(k - 0.45, 0.25, 0.2))
-                x = rich((E('274c'),), LUCK, 150)
+                x = rich((E('1f525'),), LUCK, 150)
                 place(cv, x, 660, 760, pop(k - 0.7, 0.2, 0.2))
             if k > 0.8:
                 place(cv, rich((T(lo['name'], WHITE),), LUCK, 110, stroke=12, shadow=8), 540, 1080, pop(k - 0.8), -2)
@@ -670,10 +824,6 @@ class Renderer:
             s.cam += (tgt - s.cam) * 0.16
             cv, rank = s.render(t, s.cam)
             s.overlays(cv, t)
-            # collision sounds (only near the camera)
-            for th, g in s.race.hits[nhit:]:
-                s.audio.append((th, 'click', 0.08 + 0.25 * g))
-            nhit = len(s.race.hits)
             yield cv
             t += 1 / FPS
             if s.end_t is not None and t - s.end_t > END:
@@ -740,6 +890,30 @@ def arp(notes, step, dur=0.35):
     return norm(out)
 
 
+def s_sizzle():
+    t = tv(1.2)
+    x = bpf(arng.standard_normal(len(t)), 2500, 11000) * (1 - np.exp(-t / 0.01)) * np.exp(-t / 0.4)
+    crackle = (arng.random(len(t)) > 0.9985) * arng.standard_normal(len(t)) * 4
+    return norm(x + bpf(crackle, 1500, 9000) * np.exp(-t / 0.6))
+
+
+def rumble(r, n):
+    """Low lava rumble that swells as the lava closes in on the last marble."""
+    env = np.zeros(n)
+    if r.gaps:
+        ts = np.array([g[0] for g in r.gaps])
+        gs = np.array([g[1] for g in r.gaps])
+        lvl = np.clip(1 - gs / 900, 0, 1) ** 1.5
+        env = np.interp(np.arange(n) / SR, ts, lvl, left=0, right=0)
+        if r.end_t is not None:
+            i = int(r.end_t * SR)
+            env[i:] = env[i - 1] * np.exp(-np.arange(n - i) / (0.7 * SR)) if i > 0 else 0
+    noise = lpf(arng.standard_normal(n), 140) * 6
+    t = np.arange(n) / SR
+    tone = np.sin(2 * np.pi * 42 * t + 2 * np.sin(2 * np.pi * 0.7 * t)) * 0.5
+    return norm(noise + tone) * env
+
+
 def s_win():
     return arp([523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98], 0.07, 0.6)
 
@@ -748,7 +922,7 @@ def s_sting():
     return arp([392.0, 369.99, 349.23, 293.66], 0.18, 0.7)
 
 
-def music(dur, bpm=124):
+def music(dur, bpm=138):
     """Original upbeat loop: kick, clap, hats, bass, plucked chords. Intensity rises over time."""
     spb = 60 / bpm
     n = int(dur * SR)
@@ -821,32 +995,27 @@ def build_audio(r, path, intro_line):
     i_end = int(end * SR)
     fade[i_end:] = np.linspace(1, 0.25, n - i_end)
     out = mus[:n] * 0.32 * fade
-    SFX = dict(click=[s_click(f) for f in (2200, 2600, 3100, 3600)], whoosh=s_whoosh(), riser=s_riser(),
-               boom=s_boom(), win=s_win(), sting=s_sting())
+    SFX = dict(whoosh=s_whoosh(), riser=s_riser(), boom=s_boom(), win=s_win(), sting=s_sting(), sizzle=s_sizzle())
     voice = [(0.15, ('say', intro_line), 1.0)]
-    last_click = {}
     duck = np.ones(n)
+    fx = rumble(r, n) * 0.35
     for t, name, g in voice + r.audio:
         i = int(t * SR)
         if isinstance(name, tuple):
             x = say(name[1])
             m = min(len(x), n - i)
             if m > 0:
-                out[i:i + m] += x[:m] * 0.9 * g
-                duck[i:i + m] = np.minimum(duck[i:i + m], 0.45)
+                fx[i:i + m] += x[:m] * 0.9 * g
+                duck[i:i + m] = np.minimum(duck[i:i + m], 0.5)
             continue
-        if name == 'click':
-            # thin out: at most one click per 25 ms
-            if t - last_click.get('c', -1) < 0.025:
-                continue
-            last_click['c'] = t
-            x = SFX['click'][int(t * 1000) % 4]
-        else:
-            x = SFX[name]
+        x = SFX[name]
         m = min(len(x), n - i)
         if m > 0:
-            out[i:i + m] += x[:m] * g
-    out = out * (0.55 + 0.45 * duck) if False else out
+            fx[i:i + m] += x[:m] * g
+    # smooth the ducking so the music dips under the voice without clicks
+    k = int(0.08 * SR)
+    duck = np.convolve(duck, np.ones(k) / k, mode='same')
+    out = out * duck + fx
     out = np.tanh(out * 1.1)
     raw = (np.clip(np.stack([out, out], 1), -1, 1) * 32767).astype('<i2')
     with wave.open(path, 'wb') as w:
@@ -886,13 +1055,13 @@ if __name__ == '__main__':
                 print(part, i, flush=True)
         p.stdin.close()
         p.wait()
-        intro = f"{r.n} countries. One race. Last place is eliminated!"
+        intro = f"{r.n} countries. The lava is coming. If it gets you, you're out!"
         build_audio(r, f'{D}/_race_{part}.wav', intro)
         out = f'{D}/race_{part}.mp4'
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmpv, '-i', f'{D}/_race_{part}.wav', '-c:v', 'copy',
                         '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000',
                         '-shortest', '-movflags', '+faststart', out], check=True)
         st = json.load(open(STATE)) if os.path.exists(STATE) else {}
-        st[str(part)] = r.race.finish_order[-1]['name']
+        st[str(part)] = r.race.caught['name']
         json.dump(st, open(STATE, 'w'), indent=1)
         print('done', out, round(r.duration, 1), r.info, flush=True)

@@ -10,8 +10,8 @@ Si TikTok propose « Programmer » (depuis l'ordinateur, tiktok.com/tiktokstudio
 3. **Légende** (copier-coller, remplacer N et le nombre de pays) :
 
 ```
-World Marble Race – Part N 🏁 X countries, last place is eliminated. Comment your country 👇 Follow so yours doesn't miss the next race!
-#marblerace #countries #worldmarblerace #countryballs #simulation #fyp
+World Marble Race – Part N 🔥 X countries, the lava burns one. Comment your country 👇 Follow so yours doesn't miss the next race!
+#marblerace #countries #worldmarblerace #countryballs #lava #simulation #fyp
 Flags: Twemoji (CC-BY 4.0)
 ```
 
