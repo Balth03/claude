@@ -1,24 +1,24 @@
-# Ring Escape — vidéo hors-série (20,6 s)
+# Ring Escape — bonus video (20.6 s, English)
 
-Fichier : `ring_escape.mp4` (1080x1920, 30 fps, son intégré, musique 100 % originale → pas de souci de droits).
+File: `ring_escape.mp4` (1080x1920, 30 fps, sound included, 100% original music: no copyright issue).
 
-## Publication
-- **Son** : garde le son de la vidéo (mélodie originale, elle EST le hook). Ne mets pas de son tendance par-dessus.
-- **Légende** :
+## Posting
+- **Sound**: keep the video's own sound (original melody, it IS the hook). Don't add a trending sound on top.
+- **Caption**:
   ```
-  9 anneaux. 1 balle. Elle passe ? 👀 Réponds 1 (oui) ou 2 (non) 👇
-  #ringescape #satisfying #oddlysatisfying #asmr #balle #simulation #pourtoi #fyp
+  9 rings. 1 ball. Will it make it? 👀 Comment 1 (yes) or 2 (no) 👇
+  #ringescape #satisfying #oddlysatisfying #asmr #simulation #fyp #foryou
   ```
-- **« Contenu généré par l'IA »** : à activer.
-- **Commentaire épinglé** : `1 = elle passe, 2 = elle rate. Réponse dans la vidéo 😈 Partie 2 : 20 anneaux !`
-- **Couverture** : `cover.png` (première image), ou choisis l'image du dernier anneau.
+- **"AI-generated content"**: turn ON.
+- **Pinned comment**: `1 = it makes it, 2 = it fails. Answer is in the video 😈 Part 2: 20 rings!`
+- **Cover**: `cover.png` (first frame) or pick a frame from the last ring.
 
-## Pourquoi ça devrait retenir
-- 0,0 s : son + mouvement immédiats (kick + note de la mélodie), 9 anneaux néon déjà à l'écran, texte « 9 ANNEAUX / IL S'ÉCHAPPE ? ».
-- 1er anneau explosé à 0,6 s → récompense visuelle et sonore avant que le pouce bouge.
-- Un anneau tombe toutes les ~1 à 2 s : la mélodie monte d'un ton à mesure que les anneaux tombent.
-- Dernier anneau : 5 s de tension + ralenti + « IL PASSE ? 1 = OUI • 2 = NON » (appel aux commentaires).
-- Fin nette + « Partie 2 : 20 anneaux » (raison de s'abonner).
+## Why it should hold viewers
+- 0.0 s: sound + motion at once (kick + first melody note), 9 neon rings already on screen, text "9 RINGS / CAN IT ESCAPE?".
+- First ring shatters at 0.6 s: a visual and audio reward before the thumb moves.
+- A ring falls every ~1-2 s; the melody lifts a key as rings fall.
+- Last ring: ~5 s of tension + slow motion + "WILL IT MAKE IT? 1 = YES • 2 = NO" (comment bait).
+- Clean ending + "PART 2: 20 RINGS" (reason to follow).
 
-## Régénérer
-`python3 rrender.py ring_escape.mp4` (graine 30 fixée dans `rrender.py`).
+## Regenerate
+`python3 rrender.py ring_escape.mp4` (seed 30 fixed in `rrender.py`).

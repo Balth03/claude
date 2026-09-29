@@ -215,26 +215,26 @@ def frame(fi, dbg=False):
     final_ring = (esc_n == NR - 1)
     if k_done == NR and vt > ESC_V[-1] + 0.55:
         u_ = min(1, (vt - ESC_V[-1] - 0.55) / 0.25); sc_ = 1 + 0.25 * (1 - u_) ** 2
-        text_c(ui, (540, 250), "IL S'EST ÉCHAPPÉ !", 118, (255, 255, 255), 9, scale=sc_)
+        text_c(ui, (540, 250), "IT ESCAPED!", 118, (255, 255, 255), 9, scale=sc_)
         text_c(ui, (540, 520), "9/9", 230, (120, 255, 190), 10, scale=sc_)
-        text_c(ui, (540, 1500), "PARTIE 2 : 20 ANNEAUX", 82, (255, 220, 60), 8, emo=0x1F608)
-        text_c(ui, (540, 1610), "ABONNE-TOI • " + HANDLE, 60, (255, 255, 255), 7)
+        text_c(ui, (540, 1500), "PART 2: 20 RINGS", 82, (255, 220, 60), 8, emo=0x1F608)
+        text_c(ui, (540, 1610), "FOLLOW • " + HANDLE, 60, (255, 255, 255), 7)
     elif vt < 2.1:
         u_ = min(1, vt / 0.15); sc_ = 1.0 + 0.3 * (1 - u_) ** 2
-        text_c(ui, (540, 240), "9 ANNEAUX", 176, (255, 224, 70), 11, scale=sc_)
-        text_c(ui, (540, 400), "IL S'ÉCHAPPE ?", 118, (255, 255, 255), 9, scale=sc_)
+        text_c(ui, (540, 240), "9 RINGS", 176, (255, 224, 70), 11, scale=sc_)
+        text_c(ui, (540, 400), "CAN IT ESCAPE?", 118, (255, 255, 255), 9, scale=sc_)
     else:
         bump = 1 + 0.35 * punch
         if final_ring and vt - ESC_V[-2] < 1.5:
-            text_c(ui, (540, 250), "DERNIER ANNEAU", 130, (255, 90, 110), 10, emo=0x1F630)
+            text_c(ui, (540, 250), "LAST RING", 130, (255, 90, 110), 10, emo=0x1F630)
         elif final_ring:
-            text_c(ui, (540, 250), "IL PASSE ?", 150, (255, 255, 255), 10)
+            text_c(ui, (540, 250), "WILL IT MAKE IT?", 118, (255, 255, 255), 10)
         else:
-            text_c(ui, (540, 250), f"ANNEAU {esc_n + 1}/9", 128, (255, 255, 255), 9, scale=bump)
+            text_c(ui, (540, 250), f"RING {esc_n + 1}/9", 128, (255, 255, 255), 9, scale=bump)
         if final_ring and vt - ESC_V[-2] >= 1.5:
-            text_c(ui, (540, 400), "1 = OUI   •   2 = NON", 96, (255, 224, 70), 8, emo=0x1F447)
+            text_c(ui, (540, 400), "1 = YES   •   2 = NO", 96, (255, 224, 70), 8, emo=0x1F447)
         elif esc_n in (4, 5) and vt - ESC_V[esc_n - 1] < 1.6 and esc_n >= 5:
-            text_c(ui, (540, 400), "PLUS QUE 4 !", 96, (255, 224, 70), 8)
+            text_c(ui, (540, 400), "ONLY 4 LEFT!", 96, (255, 224, 70), 8)
     # progress pips
     if not (k_done == NR and vt > ESC_V[-1] + 0.55):
         for j in range(NR):
