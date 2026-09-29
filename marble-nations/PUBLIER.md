@@ -19,7 +19,7 @@ Flags: Twemoji (CC-BY 4.0)
    - Qui peut regarder : Tout le monde
    - Commentaires : ON · Duo : ON · Stitch : ON
    - « Contenu généré par l'IA » : **ON** (la voix est synthétique — c'est la règle TikTok, et le label ne réduit pas la portée)
-   - Musique : ne rien ajouter (le son de la vidéo est 100 % original)
+   - Musique : « Sons » → un son **tendance** instrumental (phonk/électro, sans paroles), puis « Volume » : son original **100 %**, son ajouté **5-10 %**. On garde notre audio, la vidéo apparaît sur la page du son tendance.
 5. Après publication, **épingler un commentaire** :
    - `Which country should win the whole tournament? 🏆👇`
 6. Pendant la première heure : répondre à 5-10 commentaires (« Good luck to 🇧🇷! », « Part N+1 at 7pm 👀 »). Les réponses relancent la vidéo.
