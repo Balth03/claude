@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""TATAMI TRAGIQUE - combats de boules armées (Shorts 1080x1920).
+"""TATAMI TRAGIQUE - Dojo Saga : duels de boules en anglais avec personnages récurrents (Shorts 1080x1920).
 
-  python3 fight.py search E1        # cherche les graines qui donnent un combat serré
-  python3 fight.py render E1 SEED   # rend la vidéo  -> fight_E1.mp4
-  python3 fight.py still E1 SEED t  # image fixe à t secondes (debug)
+  python3 saga.py search E1        # cherche les graines qui donnent un combat serré
+  python3 saga.py render E1 SEED   # rend la vidéo  -> fight_E1.mp4
+  python3 saga.py still E1 SEED t  # image fixe à t secondes (debug)
 """
 import math, os, sys, random, functools, subprocess, wave
 import numpy as np
@@ -24,50 +24,38 @@ YEL, RED, WHITE, BLACK, GREY = (255, 210, 31), (230, 57, 70), (255, 255, 255), (
 
 
 # ======================================================================= episodes
-def ep_E1():
-    return dict(
-        title=('KATANA', 'NUNCHAKU'), next='BÔ vs SHURIKENS',
-        fighters=[
-            dict(name='KATANA', team=0, color=(232, 62, 74), kind='katana', L=150, spin=190, dmg=2,
-                 rule='dmg', inc=2, hp=100, r=80, speed=600),
-            dict(name='NUNCHAKU', team=1, color=(45, 150, 255), kind='nunchaku', L=112, spin=230, dmg=5,
-                 rule='spin', inc=60, hp=100, r=80, speed=600),
-        ])
+SKIN = (240, 198, 160)
+CAST = dict(
+    SAMURAI=dict(emo='26e9-fe0f', color=(214, 48, 60), kind='katana', L=150, spin=190, dmg=2, rule='dmg', inc=2,
+                 hp=100, r=80, speed=600, hat='topknot', belt=(20, 20, 24)),
+    NINJA=dict(emo='1f977', color=(44, 48, 70), kind='shuriken', L=0, spin=0, dmg=1, rule='star', inc=1, hp=100,
+               r=76, speed=620, period=1.7, hat='mask', belt=(150, 30, 40)),
+    MONK=dict(emo='1f9d8', color=(236, 132, 30), kind='bo', L=135, spin=150, dmg=7, rule='len', inc=10, hp=100, r=76,
+              speed=560, hat='bald', belt=(120, 60, 20)),
+    SUMO=dict(emo='1f93c', color=SKIN, kind='none', L=0, spin=0, dmg=5, rule='grow', inc=5, hp=150, r=100,
+              speed=430, hat='sumo', belt=(30, 44, 110)),
+    KUNGFU=dict(emo='1f409', name='KUNG FU', color=(250, 200, 30), kind='nunchaku', L=112, spin=230, dmg=5,
+                rule='spin', inc=60, hp=100, r=80, speed=600, hat='headband', belt=(20, 20, 24)),
+)
 
 
-def ep_E2():
-    return dict(
-        title=('BÔ', 'SHURIKENS'), next='1 CEINTURE NOIRE vs 10 BLANCHES',
-        fighters=[
-            dict(name='BÔ', team=0, color=(226, 142, 60), kind='bo', L=135, spin=150, dmg=7,
-                 rule='len', inc=10, hp=100, r=76, speed=560),
-            dict(name='SHURIKENS', team=1, color=(165, 95, 235), kind='shuriken', L=0, spin=0, dmg=1,
-                 rule='star', inc=1, hp=100, r=76, speed=600, period=1.8),
-        ])
+def duel(a, b, nxt, **over):
+    fs = []
+    for team, key in enumerate((a, b)):
+        c = dict(CAST[key])
+        c.update(over.get(key, {}))
+        c['name'] = c.get('name', key)
+        c['team'] = team
+        fs.append(c)
+    return dict(title=(fs[0]['name'], fs[1]['name']), emo=(fs[0]['emo'], fs[1]['emo']), next=nxt, fighters=fs)
 
 
-def ep_E3():
-    f = [dict(name='CEINTURE NOIRE', team=0, color=(30, 30, 34), kind='katana', L=150, spin=110, dmg=4,
-              rule='none', hp=100, r=84, speed=380, outline=YEL)]
-    for k in range(10):
-        f.append(dict(name='BLANCHE', team=1, color=(245, 245, 245), kind='none', L=0, spin=0, dmg=1,
-                      rule='none', hp=16, r=44, speed=430))
-    return dict(title=('1 NOIRE', '10 BLANCHES'), next='LE GRAND TOURNOI', fighters=f, team_names=(
-        'CEINTURE NOIRE', 'CEINTURES BLANCHES'))
-
-
-def ep_E4():
-    return dict(
-        title=('KATANA', 'BÔ'), next='NUNCHAKU vs SHURIKENS',
-        fighters=[
-            dict(name='KATANA', team=0, color=(232, 62, 74), kind='katana', L=150, spin=190, dmg=2,
-                 rule='dmg', inc=2, hp=100, r=80, speed=600),
-            dict(name='BÔ', team=1, color=(226, 142, 60), kind='bo', L=135, spin=150, dmg=7,
-                 rule='len', inc=10, hp=100, r=76, speed=560),
-        ])
-
-
-EPISODES = dict(E1=ep_E1, E2=ep_E2, E3=ep_E3, E4=ep_E4)
+EPISODES = dict(
+    S1=lambda: duel('SAMURAI', 'NINJA', ('SUMO', '1f93c', 'MONK', '1f9d8')),
+    S2=lambda: duel('SUMO', 'MONK', ('KUNG FU', '1f409', 'SAMURAI', '26e9-fe0f')),
+    S3=lambda: duel('KUNGFU', 'SAMURAI', ('NINJA', '1f977', 'MONK', '1f9d8')),
+)
+EP_NO = dict(S1=1, S2=2, S3=3)
 
 
 # ======================================================================= physics
@@ -114,13 +102,15 @@ class Fighter:
 
     def stat(s):
         if s.rule == 'dmg':
-            return f'DÉGÂTS : {s.dmg}', f'+{s.inc} DÉGÂTS PAR TOUCHE'
+            return f'DAMAGE: {s.dmg}', f'+{s.inc} DAMAGE PER HIT'
         if s.rule == 'spin':
-            return f'ROTATION : {abs(int(s.spin))}°/S', f'+{s.inc}°/S PAR TOUCHE'
+            return f'SPIN: {abs(int(s.spin))}°/S', f'+{s.inc}°/S PER HIT'
         if s.rule == 'len':
-            return f'PORTÉE : {int(s.L * 2)}', f'+{2 * s.inc} DE PORTÉE PAR TOUCHE'
+            return f'REACH: {int(s.L * 2)}', f'+{2 * s.inc} REACH PER HIT'
         if s.rule == 'star':
-            return f'SHURIKENS : {1 + s.hits}', '+1 SHURIKEN PAR TOUCHE'
+            return f'SHURIKENS: {1 + s.hits}', '+1 SHURIKEN PER HIT'
+        if s.rule == 'grow':
+            return f'SIZE: {int(s.r * 2)}', f'GROWS +{2 * s.inc} PER HIT'
         return '', ''
 
 
@@ -174,6 +164,8 @@ class Sim:
             a.spin += a.inc * (1 if a.spin >= 0 else -1)
         elif a.rule == 'len':
             a.L += a.inc
+        elif a.rule == 'grow':
+            a.r = min(a.r + a.inc, 170)
         s.ev(kind, a.i, b.i, dmg, px, py)
         if b.hp <= 0 and b.alive:
             b.alive = False
@@ -497,7 +489,7 @@ class Renderer:
         cv.paste(lg, (40, 46), lg)
         t = rich((T('TATAMI ', WHITE), T('TRAGIQUE', YEL)), ANTON, 76)
         cv.paste(t, (176, 40), t)
-        st = rich((T('COMBAT DE BOULES • ÉPISODE ' + s.epname[1:], GREY),), ANTON, 30)
+        st = rich((T(f'DOJO SAGA • EPISODE {EP_NO[s.epname]}', GREY),), ANTON, 30)
         cv.paste(st, (180, 146), st)
         d = ImageDraw.Draw(cv)
         d.rectangle([0, 206, W, 210], fill=YEL)
@@ -514,9 +506,9 @@ class Renderer:
         names = s.ep.get('team_names', s.ep['title'])
         for team in (0, 1):
             col = s.team_color(team)
-            if col[0] + col[1] + col[2] < 150:
+            if col[0] + col[1] + col[2] < 250:
                 col = (235, 235, 240)
-            nm = rich((T(names[team], col),), ANTON, 58 if len(names[team]) < 12 else 46, stroke=3)
+            nm = rich((T(names[team] + ' ', col), E(s.ep['emo'][team])) if team == 0 else (E(s.ep['emo'][team]), T(' ' + names[team], col)), ANTON, 58 if len(names[team]) < 12 else 46, stroke=3)
             x = 60 if team == 0 else W - 60 - nm.width
             cv.paste(nm, (int(x), 236), nm)
             hp, hm = s.sim.team_hp(team)
@@ -542,7 +534,7 @@ class Renderer:
                 if w > 4:
                     d.rounded_rectangle([bx + bw - w, by, bx + bw, by + bh], radius=12, fill=fillc)
             d.rounded_rectangle([bx, by, bx + bw, by + bh], radius=12, outline=BLACK, width=3)
-            lab = rich((T(f'{int(math.ceil(hp))} PV', WHITE),), ANTON, 32, stroke=3)
+            lab = rich((T(f'{int(math.ceil(hp))} HP', WHITE),), ANTON, 32, stroke=3)
             cv.paste(lab, (int(bx + bw / 2 - lab.width / 2), by + bh // 2 - lab.height // 2), lab)
             # stat line
             fs = [f for f in s.sim.f if f.team == team]
@@ -634,7 +626,8 @@ class Renderer:
         d.ellipse([x - r - 5 * SS, y - r - 5 * SS, x + r + 5 * SS, y + r + 5 * SS], fill=BLACK)
         d.ellipse([x - r, y - r, x + r, y + r], fill=col, outline=outline, width=4 * SS)
         # belt
-        belt = BLACK if f.team == 0 and f.color[0] > 60 else (WHITE if f.color[0] < 60 else (40, 40, 40))
+        belt = f.__dict__.get('belt') or (BLACK if f.team == 0 and f.color[0] > 60 else (WHITE if f.color[0] < 60 else (40, 40, 40)))
+        s.draw_hat_back(d, f, x, y, r)
         if f.color == (245, 245, 245):
             belt = (250, 250, 250)
             d.ellipse([x - r, y - r, x + r, y + r], outline=(150, 150, 160), width=3 * SS)
@@ -646,6 +639,7 @@ class Renderer:
             d.rectangle([x - r * 0.12, by - r * 0.14, x + r * 0.12, by + r * 0.14], fill=belt)
         else:
             d.line([(x - hw + 3 * SS, by), (x + hw - 3 * SS, by)], fill=(225, 225, 232), width=int(r * 0.22))
+        s.draw_hat_front(d, f, x, y, r, hit)
         # eyes toward nearest enemy
         en = [g for g in s.sim.f if g.team != f.team and g.alive]
         if en:
@@ -669,6 +663,47 @@ class Renderer:
         for sx in (-1, 1):
             ex, ey = x + sx * r * 0.32, y - r * 0.18 - er * 1.35
             d.line([(ex - sx * er, ey - er * 0.35), (ex + sx * er, ey + er * 0.3)], fill=BLACK, width=int(3.5 * SS))
+        # mouth: gritted teeth, open "O" when hit
+        my = y + r * 0.13
+        if hit or not f.alive:
+            d.ellipse([x - r * 0.1, my - r * 0.08, x + r * 0.1, my + r * 0.1], fill=(40, 10, 14))
+        else:
+            d.rounded_rectangle([x - r * 0.2, my - r * 0.05, x + r * 0.2, my + r * 0.07], radius=r * 0.03,
+                                fill=WHITE, outline=BLACK, width=2 * SS)
+            d.line([(x - r * 0.2, my + r * 0.01), (x + r * 0.2, my + r * 0.01)], fill=BLACK, width=SS)
+
+    def draw_hat_back(s, d, f, x, y, r):
+        hat = f.__dict__.get('hat')
+        if hat in ('topknot', 'sumo'):
+            k = r * (0.2 if hat == 'topknot' else 0.24)
+            d.ellipse([x - k * 0.8, y - r - k * 1.1, x + k * 0.8, y - r + k * 0.5], fill=(18, 18, 22), outline=BLACK,
+                      width=2 * SS)
+
+    def draw_hat_front(s, d, f, x, y, r, hit):
+        hat = f.__dict__.get('hat')
+        if hat == 'mask':
+            # skin slit around the eyes
+            d.rounded_rectangle([x - r * 0.7, y - r * 0.42, x + r * 0.7, y + r * 0.02], radius=r * 0.2,
+                                fill=WHITE if hit else SKIN)
+            for sx in (-1, 1):
+                d.line([(x + sx * r * 0.62, y - r * 0.48), (x + sx * (r * 0.95), y - r * 0.9)], fill=(150, 30, 40),
+                       width=int(r * 0.1))
+        elif hat == 'headband':
+            d.chord([x - r, y - r, x + r, y + r], 212, 328, fill=(210, 30, 40))
+            d.line([(x + r * 0.75, y - r * 0.55), (x + r * 1.15, y - r * 0.3)], fill=(210, 30, 40), width=int(r * 0.12))
+            d.line([(x + r * 0.75, y - r * 0.55), (x + r * 1.1, y - r * 0.6)], fill=(210, 30, 40), width=int(r * 0.1))
+        elif hat == 'bald':
+            # skin head over orange robe, plus the forehead dots
+            d.chord([x - r, y - r, x + r, y + r], 180, 360, fill=WHITE if hit else SKIN)
+            d.line([(x - r * 0.98, y), (x + r * 0.98, y)], fill=mix(f.color, BLACK, 0.7), width=2 * SS)
+            for k in range(3):
+                dx = (k - 1) * r * 0.14
+                d.ellipse([x + dx - r * 0.035, y - r * 0.72 - r * 0.035, x + dx + r * 0.035, y - r * 0.72 + r * 0.035],
+                          fill=(120, 80, 60))
+            d.ellipse([x - r * 0.55, y - r * 0.85, x - r * 0.25, y - r * 0.65], fill=(255, 235, 215))
+        elif hat == 'topknot':
+            d.chord([x - r, y - r, x + r, y + r], 222, 318, fill=WHITE)
+            d.ellipse([x - r * 0.07, y - r * 0.93, x + r * 0.07, y - r * 0.79], fill=RED)
 
     def draw_arena(s, tnow, zoom=1.0, zc=None):
         im = s.arena_bg.copy()
@@ -846,13 +881,21 @@ class Renderer:
                   0, 1 - clamp01((age - 0.5) / 0.3))
         s.pops = [p for p in s.pops if tout - p['t'] < 0.9]
         # intro overlay
-        if tout < 1.6:
-            q = rich((T('QUI VA GAGNER ?', YEL),), LUCK, 104, stroke=12, shadow=8)
-            a = 1 - clamp01((tout - 1.25) / 0.35)
-            place(cv, q, 540, AY + 150, pop(tout, 0.25, 0.3), -3, a)
+        if tout < 1.9:
+            a = 1 - clamp01((tout - 1.55) / 0.35)
+            n0, n1 = s.ep['title']
+            e0, e1 = s.ep['emo']
+            l1 = rich((T(n0 + ' ', WHITE), E(e0)), LUCK, 120, stroke=13, shadow=9)
+            vs = rich((T('VS', YEL),), LUCK, 110, stroke=12, shadow=8)
+            l2 = rich((E(e1), T(' ' + n1, WHITE)), LUCK, 120, stroke=13, shadow=9)
+            place(cv, l1, 540 - 60 * (1 - ease_out(tout / 0.25)), AY + 170, pop(tout, 0.2, 0.3), -3, a)
+            place(cv, vs, 540, AY + 300, pop(tout - 0.12, 0.2, 0.3), 0, a)
+            place(cv, l2, 540 + 60 * (1 - ease_out((tout - 0.2) / 0.25)), AY + 430, pop(tout - 0.2, 0.2, 0.3), 3, a)
+            q = rich((T('WHO WINS? ', YEL), E('1f447')), LUCK, 76, stroke=9, shadow=6)
+            place(cv, q, 540, AY + 580, pop(tout - 0.4, 0.2, 0.3), -2, a)
         # bottom
         if ko_out is None:
-            b = rich((T('COMMENTE TON CHOIX ', WHITE), E('1f447')), LUCK, 50, stroke=7)
+            b = rich((T('COMMENT YOUR PICK ', WHITE), E('1f447')), LUCK, 50, stroke=7)
             place(cv, b, 540, 1540, 1 + 0.04 * math.sin(tout * 5))
         else:
             k = tout - ko_out
@@ -864,21 +907,22 @@ class Renderer:
                 w = s.info['winner']
                 names = s.ep.get('team_names', s.ep['title'])
                 col = s.team_color(w)
-                if sum(col) < 150:
+                if sum(col) < 250:
                     col = WHITE
                 cup = emoji('1f3c6', 150)
                 place(cv, cup, 540, AY + 190, pop(k - 1.15, 0.25, 0.2), 6 * math.sin(k * 4))
-                wn = rich((T(names[w], col),), LUCK, 108, stroke=12, shadow=8)
+                wn = rich((T(names[w] + ' ', col), E(s.ep['emo'][w])), LUCK, 108, stroke=12, shadow=8)
                 place(cv, wn, 540, AY + 360, pop(k - 1.3), -2)
-                g = rich((T('GAGNENT !' if names[w].endswith('S') else 'GAGNE !', WHITE),), LUCK, 108, stroke=12, shadow=8)
+                g = rich((T('WINS!', WHITE),), LUCK, 108, stroke=12, shadow=8)
                 place(cv, g, 540, AY + 480, pop(k - 1.4), 2)
                 hp = int(math.ceil(s.info['hp']))
-                sub = rich((T(f'AVEC SEULEMENT {hp} PV !' if s.info['frac'] < 0.25 else f'AVEC {hp} PV RESTANTS', YEL),),
+                sub = rich((T(f'WITH ONLY {hp} HP LEFT!' if s.info['frac'] < 0.25 else f'WITH {hp} HP LEFT', YEL),),
                            LUCK, 58, stroke=8, shadow=5)
                 place(cv, sub, 540, AY + 600, pop(k - 1.55))
-                ok = rich((T('TU AVAIS BON ? ', WHITE), E('1f447')), LUCK, 64, stroke=8, shadow=5)
+                ok = rich((T('DID YOU CALL IT? ', WHITE), E('1f447')), LUCK, 64, stroke=8, shadow=5)
                 place(cv, ok, 540, AY + 740, pop(k - 1.8), -2)
-                nx = rich((T('PROCHAIN COMBAT : ', GREY), T(s.ep['next'], YEL)), ANTON, 40, stroke=3)
+                a0, e0, a1, e1 = s.ep['next']
+                nx = rich((T('NEXT: ', GREY), T(a0 + ' ', YEL), E(e0), T(' VS ', GREY), E(e1), T(' ' + a1, YEL)), ANTON, 44, stroke=3)
                 place(cv, nx, 540, 1540, pop(k - 2.1))
         return cv
 
@@ -1097,7 +1141,7 @@ if __name__ == '__main__':
     elif cmd == 'render':
         seed = int(sys.argv[3])
         r = Renderer(epname, seed)
-        out = f'{D}/fight_{epname}.mp4'
+        out = f'{D}/saga_{epname}.mp4'
         p = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s',
                               f'{W}x{H}', '-r', str(FPS), '-i', '-', '-c:v', 'libx264', '-preset', 'medium', '-crf',
                               '19', '-pix_fmt', 'yuv420p', f'{D}/_v_{epname}.mp4'], stdin=subprocess.PIPE)
