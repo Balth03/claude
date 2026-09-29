@@ -18,7 +18,10 @@ File: `ring_escape.mp4` (1080x1920, 30 fps, sound included, 100% original music:
 - First ring shatters at 0.6 s: a visual and audio reward before the thumb moves.
 - A ring falls every ~1-2 s; the melody lifts a key as rings fall.
 - Last ring: ~5 s of tension + slow motion + "WILL IT MAKE IT? 1 = YES • 2 = NO" (comment bait).
+- Meme layer: the ball 'talks' (THIS IS EASY 😏 → I'M FINE. 😅 → OK NOW I'M SCARED 😰 → PLEASE 🙏), record-scratch as time slows, airhorn + confetti + 😎 when it escapes.
 - Clean ending + "PART 2: 20 RINGS" (reason to follow).
 
 ## Regenerate
 `python3 rrender.py ring_escape.mp4` (seed 30 fixed in `rrender.py`).
+
+Emoji: Twemoji (CC-BY 4.0). Add "Emoji: Twemoji (CC-BY 4.0)" to the caption if you want to credit it.

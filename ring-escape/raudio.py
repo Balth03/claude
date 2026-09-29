@@ -70,6 +70,25 @@ def boom(dur=1.6):
     y += 0.5 * signal.sosfilt(sos, x) * np.exp(-t * 2.5)
     return y
 
+def scratch(dur=0.42):
+    n = int(dur * SR); t = np.arange(n) / SR
+    f = 1100 * np.exp(-t * 6.5) + 60
+    y = signal.sawtooth(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 5)
+    x = np.random.RandomState(6).randn(n)
+    sos = signal.butter(2, [800 / (SR / 2), 7000 / (SR / 2)], 'band', output='sos')
+    return (0.6 * y + 0.5 * signal.sosfilt(sos, x) * np.exp(-t * 9)) * 0.9
+
+def airhorn(dur=0.3):
+    n = int(dur * SR); t = np.arange(n) / SR
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 6 * t)
+    y = np.zeros(n)
+    for m, g in ((1.0, 1.0), (1.26, 0.8), (1.5, 0.7), (2.0, 0.4)):
+        y += g * signal.sawtooth(2 * np.pi * np.cumsum(466 * m * vib) / SR)
+    sos = signal.butter(2, 5200 / (SR / 2), 'low', output='sos')
+    y = signal.sosfilt(sos, y)
+    env = np.minimum(1, t / 0.012) * np.minimum(1, (dur - t) / 0.05)
+    return y * env * 0.35
+
 def add(buf, y, t, gain=1.0):
     i = int(round(t * SR))
     if i < 0: y = y[-i:]; i = 0
@@ -120,6 +139,7 @@ def build(ev, dur, esc_vt, slow=None, out='ring.wav'):
         while t < final_t - 0.02:
             add(drums, clap(0.15), t, 0.45 + 0.4 * (t - slow0) / max(final_t - slow0, .1)); t += step; step = max(0.04, step * 0.86)
         add(fx, riser(max(final_t - slow0, .3)), slow0, 0.5)
+        add(fx, scratch(), slow0 - 0.03, 0.8)          # record-scratch meme beat as time slows
     # bass: root per bar, 8th pulse
     for b in range(int(dur / bar) + 2):
         t0 = b * bar
@@ -187,8 +207,10 @@ def build(ev, dur, esc_vt, slow=None, out='ring.wav'):
             add(fx, bell(deg_hz(tone, sh, base=A3 * 2), 1.1 if last else 0.7, 0.9), te + i * (0.035 if not last else 0.05), 0.5)
         n = int(0.08 * SR); tt = np.arange(n) / SR
         add(fx, np.sin(2 * np.pi * (1400 - 9000 * tt) * tt) * np.exp(-tt * 40), te, 0.6)   # pop
+        if j == len(esc_vt) - 2: add(fx, boom(1.0), te, 0.7)   # vine-boom-ish hit: 'oh no, last ring'
         if last:
             add(fx, boom(), te, 1.0)
+            for q, dq in ((0.0, 0.16), (0.22, 0.16), (0.44, 0.55)): add(fx, airhorn(dq), te + q, 0.9)   # meme airhorn
             add(drums, hat(open_=True), te, 0.9)
             add(drums, clap(0.4), te, 1.0)
             for tone in (d, d + 2, d + 4, d + 7):

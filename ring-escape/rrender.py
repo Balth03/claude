@@ -44,6 +44,23 @@ def ring_col(k, lit=1.0):
     r, g, b = colorsys.hsv_to_rgb(h, 0.72 - 0.25 * lit * 0.4, 1.0)
     return (int(r * 255), int(g * 255), int(b * 255))
 
+def cool_face(size):
+    S = 4; n = size * S
+    im = Image.new('RGBA', (n, n), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.ellipse([n * .02, n * .02, n * .98, n * .98], fill=(255, 204, 51, 255), outline=(190, 120, 20, 255), width=int(n * .025))
+    d.rounded_rectangle([n * .13, n * .34, n * .47, n * .56], radius=n * .07, fill=(18, 18, 28, 255))
+    d.rounded_rectangle([n * .53, n * .34, n * .87, n * .56], radius=n * .07, fill=(18, 18, 28, 255))
+    d.rectangle([n * .45, n * .37, n * .55, n * .41], fill=(18, 18, 28, 255))
+    d.line([n * .10, n * .33, n * .90, n * .33], fill=(18, 18, 28, 255), width=int(n * .03))
+    d.line([n * .18, n * .40, n * .28, n * .37], fill=(255, 255, 255, 200), width=int(n * .025))
+    d.line([n * .58, n * .40, n * .68, n * .37], fill=(255, 255, 255, 200), width=int(n * .025))
+    d.arc([n * .25, n * .50, n * .75, n * .86], 20, 160, fill=(120, 60, 10, 255), width=int(n * .045))
+    return im.resize((size, size), Image.LANCZOS)
+
+_cf = random.Random(5)
+CONF = [(_cf.uniform(-900, 900), _cf.uniform(-1900, -700), _cf.uniform(0, 6.28), _cf.uniform(-9, 9),
+         _cf.choice([(255, 224, 70), (90, 230, 255), (255, 90, 160), (150, 255, 170), (255, 150, 60), (255, 255, 255)]), _cf.uniform(12, 24)) for _ in range(110)]
+
 def font(s): return ImageFont.truetype(ANTON, s)
 _em = {}
 def emoji(code, size):
@@ -174,6 +191,16 @@ def frame(fi, dbg=False):
                 dx, dy = math.cos(ang) * ln, math.sin(ang) * ln
                 al = int(255 * (1 - f))
                 cd.line([p2[0] - dx * SS, p2[1] - dy * SS, p2[0] + dx * SS, p2[1] + dy * SS], fill=col + (al,), width=int(sz * 0.55 * SS * (1 - f * .6)))
+    # ---- confetti after the final escape
+    if k_done == NR:
+        tc = vt - ESC_V[-1]
+        for (vx, vy, rot, spin, ccol_, sz) in CONF:
+            x = vx * tc * 0.9; y = vy * tc + 1500 * tc * tc
+            if y > 1400 or tc > 2.2: continue
+            px_, py_ = T(x, y); p2 = cp(px_, py_)
+            an = rot + spin * tc
+            dx, dy = math.cos(an) * sz * SS, math.sin(an) * sz * SS * abs(math.cos(tc * 9 + rot))
+            cd.polygon([(p2[0] - dx, p2[1] - dy), (p2[0] + dx, p2[1] + dy), (p2[0] + dx + 6 * SS, p2[1] + dy + 6 * SS), (p2[0] - dx + 6 * SS, p2[1] - dy + 6 * SS)], fill=ccol_ + (235,))
     # ---- impact sparks
     for (tb, _, rk, sp, px, py) in BOUNCES:
         ts = s - tb
@@ -216,7 +243,8 @@ def frame(fi, dbg=False):
     if k_done == NR and vt > ESC_V[-1] + 0.55:
         u_ = min(1, (vt - ESC_V[-1] - 0.55) / 0.25); sc_ = 1 + 0.25 * (1 - u_) ** 2
         text_c(ui, (540, 250), "IT ESCAPED!", 118, (255, 255, 255), 9, scale=sc_)
-        text_c(ui, (540, 520), "9/9", 230, (120, 255, 190), 10, scale=sc_)
+        fs_ = int(330 * (1 + 0.35 * (1 - u_) ** 2))
+        fc = cool_face(fs_); ui.alpha_composite(fc, (540 - fs_ // 2, 720 - fs_ // 2))
         text_c(ui, (540, 1500), "PART 2: 20 RINGS", 82, (255, 220, 60), 8, emo=0x1F608)
         text_c(ui, (540, 1610), "FOLLOW • " + HANDLE, 60, (255, 255, 255), 7)
     elif vt < 2.1:
@@ -225,7 +253,9 @@ def frame(fi, dbg=False):
         text_c(ui, (540, 400), "CAN IT ESCAPE?", 118, (255, 255, 255), 9, scale=sc_)
     else:
         bump = 1 + 0.35 * punch
-        if final_ring and vt - ESC_V[-2] < 1.5:
+        if k_done == NR:
+            text_c(ui, (540, 250), "YESSS!", 150, (120, 255, 190), 10, scale=bump)
+        elif final_ring and vt - ESC_V[-2] < 1.5:
             text_c(ui, (540, 250), "LAST RING", 130, (255, 90, 110), 10, emo=0x1F630)
         elif final_ring:
             text_c(ui, (540, 250), "WILL IT MAKE IT?", 118, (255, 255, 255), 10)
@@ -233,8 +263,12 @@ def frame(fi, dbg=False):
             text_c(ui, (540, 250), f"RING {esc_n + 1}/9", 128, (255, 255, 255), 9, scale=bump)
         if final_ring and vt - ESC_V[-2] >= 1.5:
             text_c(ui, (540, 400), "1 = YES   •   2 = NO", 96, (255, 224, 70), 8, emo=0x1F447)
-        elif esc_n in (4, 5) and vt - ESC_V[esc_n - 1] < 1.6 and esc_n >= 5:
-            text_c(ui, (540, 400), "ONLY 4 LEFT!", 96, (255, 224, 70), 8)
+        elif final_ring and vt >= V0:
+            text_c(ui, (540, 400), "PLEASE", 110, (255, 224, 70), 9, emo=0x1F64F, scale=1 + 0.06 * math.sin(vt * 14))
+        elif esc_n in QUOTE:
+            q, em = QUOTE[esc_n]
+            u_ = min(1, (vt - ESC_V[esc_n - 1]) / 0.12)
+            text_c(ui, (540, 400), q, 92, (255, 224, 70), 8, emo=em, scale=1 + 0.3 * (1 - u_) ** 2)
     # progress pips
     if not (k_done == NR and vt > ESC_V[-1] + 0.55):
         for j in range(NR):
@@ -245,6 +279,9 @@ def frame(fi, dbg=False):
             ImageDraw.Draw(ui).ellipse([x - r_, 1500 - r_, x + r_, 1500 + r_], fill=col + (255,), outline=(255, 255, 255, 255) if on else (10, 12, 24, 255), width=3)
     img.alpha_composite(ui)
     return img.convert('RGB')
+
+QUOTE = {2: ("THIS IS EASY", 0x1F60F), 3: ("THIS IS EASY", 0x1F60F), 4: ("WHY IS IT SPINNING", 0x1F605), 5: ("I'M FINE.", 0x1F605),
+         6: ("OK NOW I'M SCARED", 0x1F630), 7: ("IT'S GETTING BAD", 0x1F628)}
 
 def _f(fi): return frame(fi).tobytes()
 
